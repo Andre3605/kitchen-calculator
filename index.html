@@ -237,6 +237,54 @@ details.zones[open] summary .chev { transform: rotate(90deg); }
 .timer-on .app { padding-bottom: calc(var(--nav-h) + 110px + env(safe-area-inset-bottom)); }
 .foot { color: var(--muted); font-size: 13px; text-align: center; }
 @media (max-width: 400px) { .tb-label { display: none; } .tb { justify-content: space-between; } .timerbar .btn.small { padding: 6px 10px; } }
+/* Geführtes Training */
+.howto { display: grid; gap: 10px; counter-reset: st; padding: 0; list-style: none; }
+.howto li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; counter-increment: st; font-size: 15px; }
+.howto li::before { content: counter(st); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 700 15px var(--font-display); }
+.btn.xl { min-height: 76px; font-size: 21px; border-radius: 18px; flex-direction: column; gap: 2px; line-height: 1.2; }
+.btn.xl small { font-size: 14px; font-weight: 400; opacity: .9; }
+.erow .ss b { color: var(--ink); }
+body.playing .top, body.playing .foot, body.playing .nav { display: none; }
+body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: calc(190px + env(safe-area-inset-bottom)); gap: 14px; }
+.ptop { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.ptop .mid { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pico { border: 0; background: var(--surface2); color: var(--ink); min-width: 48px; height: 48px; border-radius: 24px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; font: 700 14px var(--font-body); cursor: pointer; }
+.pico[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.psegs { display: flex; gap: 8px; }
+.psegs .g { flex: 1; display: flex; gap: 3px; }
+.psegs i { flex: 1; height: 8px; border-radius: 4px; background: var(--surface2); }
+.psegs i.d { background: var(--good); }
+.psegs i.c { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.pk { font: 700 13px var(--font-body); letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
+.ptitle { font-size: 30px; letter-spacing: -0.5px; }
+.pfacts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pfacts div { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 8px; text-align: center; }
+.pfacts div.hot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pfacts span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; opacity: .8; }
+.pfacts b { display: block; font: 700 21px var(--font-display); line-height: 1.15; margin-top: 2px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pfacts b.sm { font-size: 16px; }
+.pstage { border-radius: 24px; padding: 22px 16px; display: grid; justify-items: center; gap: 12px; text-align: center; background: var(--ink); color: var(--bg); }
+.pstage.hold { background: var(--good); color: #fff; }
+.pstage.prep, .pstage.switch { background: var(--timer); color: #1c1503; }
+.pstage .pk { color: inherit; opacity: .85; font-size: 16px; }
+.pring { position: relative; width: min(64vw, 250px); aspect-ratio: 1; display: grid; place-items: center; }
+.pring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.pring circle { fill: none; stroke-width: 7; }
+.pring .bg { stroke: currentColor; opacity: .2; }
+.pring .fg { stroke: currentColor; stroke-linecap: round; transition: stroke-dashoffset .2s linear; }
+.ptime { font: 700 clamp(64px, 24vw, 96px) var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -2px; line-height: 1; }
+.pnext { font-size: 16px; line-height: 1.35; }
+.pnext b { display: block; font: 700 22px var(--font-display); margin-bottom: 2px; }
+.pgear { background: rgba(255, 255, 255, .14); border-radius: 12px; padding: 8px 12px; font-size: 15px; }
+.pact { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--bg); border-top: 1px solid var(--line); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.pact-in { max-width: 528px; margin: 0 auto; display: grid; gap: 8px; }
+.pbig { border: 0; border-radius: 22px; background: var(--accent); color: var(--accent-ink); min-height: 104px; width: 100%; cursor: pointer; display: grid; place-content: center; gap: 4px; font: 700 26px var(--font-display); padding: 10px; }
+.pbig small { font: 400 14px var(--font-body); opacity: .9; }
+.pbig.alt { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); min-height: 76px; font-size: 20px; }
+.psub { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.psub button { border: 0; background: transparent; color: var(--muted); font: 700 14px var(--font-body); min-height: 44px; border-radius: 12px; cursor: pointer; }
+.psub button:disabled { opacity: .35; }
+.pdone { background: color-mix(in srgb, var(--good) 14%, var(--surface)); border-radius: 14px; padding: 14px; font-weight: 700; color: var(--good); text-align: center; }
 /* Neu: Fortschritt, Vorschau, Verlauf */
 .prog { display: grid; gap: 10px; }
 .prog-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -285,15 +333,6 @@ details.zones[open] summary .chev { transform: rotate(90deg); }
   <main id="v-kraft" class="stack" hidden></main>
   <main id="v-woche" class="stack" hidden></main>
   <p class="foot">Einträge landen im <a href="https://app.notion.com/p/293be9d9d98c4d7b9d805e4fe8af8536" target="_blank" rel="noopener">Trainingslog in Notion</a>. Skizzen sind schematisch.</p>
-</div>
-
-<div class="timerbar" id="timerbar" aria-live="polite" hidden>
-  <div class="tb">
-    <div class="tb-time" id="tb-time">0:00</div>
-    <div class="tb-label" id="tb-label"></div>
-    <button class="btn small" id="tb-plus" hidden>+15 s</button>
-    <button class="btn small" id="tb-stop" hidden>Stopp</button>
-  </div>
 </div>
 
 <nav class="nav" aria-label="Bereiche">
@@ -577,6 +616,8 @@ const IC = {
   zap: '<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   left: '<path d="M15 5l-7 7 7 7"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  vol: '<path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
   right: '<path d="M9 5l7 7-7 7"/>'
 };
 const icon = (n, s = 24) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
@@ -771,21 +812,42 @@ const ART = { a: 'Kraft A', b: 'Kraft B', m: 'Mobilität' };
 const KNAME = { a: 'Einheit A', b: 'Einheit B', m: 'Mobilität' };
 const startKey = () => 'cockpit-start-' + TODAY + '-' + kview;
 const savedKey = () => 'cockpit-saved-' + TODAY + '-' + kview;
-const countOf = e => (done[e.id] || []).filter(Boolean).length;
+kemerg = store.get('cockpit-emerg-' + TODAY) === '1';
+let voiceOn = store.get('cockpit-voice') !== '0';
+const nSets = e => (kemerg && kview !== 'm') ? Math.min(2, e.sets) : e.sets;
+const countOf = e => (done[e.id] || []).slice(0, nSets(e)).filter(Boolean).length;
+const curSet = e => { const d = done[e.id] || []; for (let i = 0; i < nSets(e); i++) if (!d[i]) return i; return nSets(e); };
+const isTimed = e => !!e.hold && e.hold >= 15;
+const perSide = e => /je Seite/.test(e.dose);
+function target(e) {
+  let t = e.sets > 1 ? e.dose.replace(/^\d+ x /, '') : e.dose;
+  if (/^\d+( bis \d+)?$/.test(t)) t += ' Wdh.';
+  else t = t.replace(/^(\d+) je Seite$/, '$1 Wdh. je Seite');
+  return t;
+}
+function firstOpen(from) { const ex = EX[kview]; for (let k = 0; k < ex.length; k++) { const i = ((from || 0) + k) % ex.length; if (countOf(ex[i]) < nSets(ex[i])) return i; } return -1; }
+const pl = { phase: 'work', side: 0, end: 0, total: 0, tick: null, next: 0, same: false, lastBeep: 0 };
 const setCounts = () => EX[kview].map(e => [e, countOf(e)]).filter(x => x[1] > 0);
 function say(t) { ksay = t; const el = $('savestate'); if (el) el.textContent = t; }
 
 function listHtml() {
   const ex = EX[kview];
-  let tot = 0, dn = 0; ex.forEach(e => { tot += e.sets; dn += Math.min(e.sets, countOf(e)); });
-  const pct = tot ? Math.round(dn / tot * 100) : 0, mins = kview === 'm' ? 'ca. 10 min' : 'ca. 30 min';
+  let tot = 0, dn = 0; ex.forEach(e => { tot += nSets(e); dn += countOf(e); });
+  const pct = tot ? Math.round(dn / tot * 100) : 0, emerg = kemerg && kview !== 'm', mins = kview === 'm' ? 'ca. 10 min' : emerg ? 'ca. 20 min' : 'ca. 30 min';
   const seg = '<div class="seg" role="tablist" aria-label="Einheit wählen">' + ['a', 'b', 'm'].map(k => `<button role="tab" data-act="kview" data-k="${k}" aria-selected="${k === kview}">${KNAME[k]}</button>`).join('') + '</div>';
-  const head = `<div class="kh stack" style="gap:10px"><h2>${KNAME[kview]}</h2><p>${ex.length} Übungen, ${mins}</p><div class="bar" role="progressbar" aria-label="Fortschritt" aria-valuenow="${dn}" aria-valuemin="0" aria-valuemax="${tot}"><i style="width:${pct}%"></i></div><p class="fine">${dn} von ${tot} Sätzen erledigt</p></div>`;
-  const warm = kview === 'm' ? '' : '<details class="group"><summary style="padding:14px 16px;min-height:54px;display:flex;align-items:center;font-weight:700;cursor:pointer">Aufwärmen, 5 min</summary><ul class="warm" style="margin:0;padding:0 16px 16px 36px"><li>Katze-Kuh, 8 x</li><li>Hüftkreisen im Stand, je Richtung 8 x</li><li>Kniebeuge ohne Gewicht auf den Stuhl, 10 x</li><li>Armkreisen, je Richtung 10 x</li><li>Band auseinanderziehen, leicht, 10 x</li></ul></details>';
-  const rows = ex.map((e, i) => { const c = countOf(e), comp = c >= e.sets; return `<button class="erow${comp ? ' complete' : ''}" data-act="kopen" data-i="${i}"><span class="nb2">${comp ? icon('check', 20) : i + 1}</span><span><span class="tt">${e.name}</span><span class="ss">${e.dose}, ${e.gear[0]}</span></span><span class="cnt">${c} von ${e.sets}</span><span class="cv">${icon('right', 18)}</span></button>`; }).join('');
-  const cta = dn === 0 ? '<button class="btn block" data-act="kopen" data-i="0">Einheit starten</button>' : '<button class="btn block" data-act="kfin">Einheit abschließen</button><button class="btn ghost small" data-act="kreset" style="justify-self:center">Haken von heute löschen</button>';
+  const head = `<div class="kh stack" style="gap:10px"><h2>${KNAME[kview]}${emerg ? ', Notfall' : ''}</h2><p>${ex.length} Übungen, ${tot} Sätze, ${mins}</p><div class="bar" role="progressbar" aria-label="Fortschritt" aria-valuenow="${dn}" aria-valuemin="0" aria-valuemax="${tot}"><i style="width:${pct}%"></i></div><p class="fine">${dn} von ${tot} Sätzen erledigt</p></div>`;
+  const fo = firstOpen(0);
+  let cta;
+  if (fo < 0) cta = '<button class="btn block xl" data-act="kfin">Einheit abschließen<small>Alle Sätze erledigt</small></button>';
+  else if (dn === 0) cta = '<button class="btn block xl" data-act="pstart">Training starten<small>Die App führt dich Satz für Satz durch</small></button>';
+  else cta = `<button class="btn block xl" data-act="pstart">Weitermachen<small>Übung ${fo + 1}, Satz ${curSet(ex[fo]) + 1}: ${ex[fo].name}</small></button>`;
+  const howto = dn === 0 ? '<div class="group pad"><h3 style="font-size:18px">So läuft es</h3><ol class="howto"><li><span><b>Satz machen.</b> Das Handy liegt daneben, der Bildschirm bleibt an.</span></li><li><span><b>Einmal tippen:</b> „Satz fertig“. Der Knopf ist groß genug für den Ellbogen.</span></li><li><span><b>Pause läuft von selbst.</b> Ton und Ansage sagen, wann und womit es weitergeht.</span></li></ol><p class="fine">Halteübungen zählt die App komplett allein, inklusive Seitenwechsel.</p></div>' : '';
+  const opts = '<div class="group pad" style="gap:4px">' + `<label class="swrow">Ansage und Töne<input type="checkbox" class="switch" id="voice"${voiceOn ? ' checked' : ''}></label>` + (kview !== 'm' ? `<label class="swrow">Notfall-Version (2 Sätze, 20 min)<input type="checkbox" class="switch" id="emergency"${kemerg ? ' checked' : ''}></label>` : '') + '</div>';
+  const warm = kview === 'm' ? '' : '<details class="group"><summary style="padding:14px 16px;min-height:54px;display:flex;align-items:center;font-weight:700;cursor:pointer">Vorher aufwärmen, 5 min</summary><ul class="warm" style="margin:0;padding:0 16px 16px 36px"><li>Katze-Kuh, 8 x</li><li>Hüftkreisen im Stand, je Richtung 8 x</li><li>Kniebeuge ohne Gewicht auf den Stuhl, 10 x</li><li>Armkreisen, je Richtung 10 x</li><li>Band auseinanderziehen, leicht, 10 x</li></ul></details>';
+  const rows = ex.map((e, i) => { const c = countOf(e), n = nSets(e), comp = c >= n; return `<button class="erow${comp ? ' complete' : ''}" data-act="pjump" data-i="${i}"><span class="nb2">${comp ? icon('check', 20) : i + 1}</span><span><span class="tt">${e.name}</span><span class="ss"><b>${n} ${n === 1 ? 'Satz' : 'Sätze'}</b> × ${target(e)}<br>Pause ${e.pause} s zwischen den Sätzen</span></span><span class="cnt">${c}/${n}</span><span class="cv">${icon('right', 18)}</span></button>`; }).join('');
+  const sec = dn > 0 ? (fo >= 0 ? '<button class="btn ghost block" data-act="kfin">Vorzeitig abschließen und speichern</button>' : '') + '<button class="btn ghost small" data-act="kreset" style="justify-self:center">Haken von heute löschen</button>' : '';
   const rules = '<details class="how"><summary>Regeln</summary><ul style="padding-left:20px;display:grid;gap:6px"><li><b>Schmerzregel:</b> Beschwerden über 3 von 10 in Hüfte, Rücken, Nacken, Rippen, Knie oder linkem Oberschenkel: Übung abbrechen und im Wochenfazit melden. Wir ersetzen sie.</li><li><b>Steigern:</b> Schaffst du in allen Sätzen die obere Wiederholungszahl sauber, wird es schwerer: zusätzliche Scheibe auf die Hüfte bei Beckenheben, bei Rudern und Kreuzheben 3 s absenken, oder die schwerere Variante.</li><li><b>Notfall, 20 min:</b> 2 Sätze pro Übung, auch auf Dienstreise.</li><li>Rücken immer neutral, kein Hohlkreuz, kein Rundrücken.</li></ul></details>';
-  return seg + head + warm + `<div class="group">${rows}</div>` + cta + rules;
+  return seg + head + cta + howto + `<section><h2 class="sec-t">Ablauf</h2><div class="group">${rows}</div><p class="fine" style="margin-top:8px">Antippen springt direkt zu dieser Übung.</p></section>` + opts + warm + sec + rules;
 }
 function lastTime(e) {
   const h = krafthist().filter(x => x.view === kview && x.ex && typeof x.ex[e.id] === 'number' && x.day !== TODAY);
@@ -795,33 +857,55 @@ function lastTime(e) {
   const up = p && full(l) && full(p) ? ' Zweimal alle Sätze geschafft: heute steigern (siehe Regeln).' : '';
   return `<p class="last">Letztes Mal (${+d[2]}.${+d[1]}.): <b>${l.ex[e.id]} von ${e.sets} Sätzen</b>.${up}</p>`;
 }
-function exHtml() {
-  const ex = EX[kview], e = ex[kidx], d = done[e.id] || [], last = kidx === ex.length - 1;
-  let dots = '';
-  for (let s = 0; s < e.sets; s++) dots += `<button class="set${d[s] ? ' on' : ''}" data-act="kset" data-ex="${e.id}" data-set="${s}" aria-pressed="${d[s] ? 'true' : 'false'}" aria-label="Satz ${s + 1} ${d[s] ? 'erledigt' : 'offen'}">${s + 1}</button>`;
-  const hold = e.hold ? `<button class="btn ghost" data-act="khold" data-sec="${e.hold}" data-name="${e.name}">${e.hold} s halten, Timer starten</button>` : '';
-  return `<div class="stagebar"><button class="back" data-act="kback">${icon('left', 22)}Übersicht</button><span class="of">Übung ${kidx + 1} von ${ex.length}</span></div>` +
-    `<div class="figbox">${figure(e.fig, e.name)}</div>` +
-    `<div class="stack" style="gap:14px"><h2 style="font-size:28px">${e.name}</h2>${lastTime(e)}<div class="chips"><span class="chip dose">${e.dose}</span><span class="chip">Pause ${e.pause} s</span>${e.gear.map(g => `<span class="chip">${g}</span>`).join('')}</div>` +
-    `<div class="stack" style="gap:8px"><p class="fine">Satz antippen, die Pause startet automatisch.</p><div class="sets">${dots}</div></div><div id="timerslot"></div>${hold}` +
-    `<ol class="cues">${e.cues.map(c => `<li>${c}</li>`).join('')}</ol>` +
-    `<a class="vid" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.q)}" target="_blank" rel="noopener">Video zur Ausführung suchen</a></div>` +
-    `<div class="pager"><button class="btn ghost" data-act="kprev"${kidx === 0 ? ' disabled' : ''}>Zurück</button><button class="btn" data-act="knext">${last ? 'Zum Abschluss' : 'Nächste Übung'}</button></div>`;
+function playHtml() {
+  const ex = EX[kview], e = ex[kidx], n = nSets(e), s = curSet(e), ph = pl.phase;
+  const segs = '<div class="psegs" aria-hidden="true">' + ex.map((x, i) => { let h = ''; const c = countOf(x); for (let k = 0; k < nSets(x); k++) h += `<i class="${k < c ? 'd' : (i === kidx && k === c && ph !== 'rest' ? 'c' : '')}"></i>`; return `<span class="g">${h}</span>`; }).join('') + '</div>';
+  const top = `<div class="ptop"><button class="pico" data-act="pclose" aria-label="Zur Übersicht">${icon('x', 20)}</button><span class="mid">Übung ${kidx + 1} von ${ex.length}</span><button class="pico" data-act="pvoice" aria-pressed="${voiceOn}" aria-label="Ansage ${voiceOn ? 'an' : 'aus'}">${icon('vol', 20)}</button></div>` + segs;
+  const act = (big, subs) => `<div class="pact"><div class="pact-in">${big}<div class="psub">${subs}</div></div></div>`;
+  const undo = `<button data-act="pundo"${ex.some(x => countOf(x) > 0) ? '' : ' disabled'}>Letzten Satz zurück</button>`;
+  if (ph !== 'work') {
+    const ring = `<div class="pring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="pt-ring" cx="60" cy="60" r="54" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="ptime" id="pt-time" aria-live="off">0:00</div></div>`;
+    if (ph === 'rest') {
+      const ne = ex[pl.next], ns = curSet(ne);
+      const nx = pl.same ? `<p class="pnext"><b>Danach: Satz ${ns + 1} von ${nSets(ne)}</b>${ne.name}, ${target(ne)}</p>` :
+        `<p class="pnext"><b>Nächste Übung: ${ne.name}</b>${nSets(ne)} ${nSets(ne) === 1 ? 'Satz' : 'Sätze'} × ${target(ne)}</p><p class="pgear">Bereitlegen: ${ne.gear.join(', ')}</p>`;
+      return top + `<div class="pstage rest" aria-live="polite"><p class="pk">Pause</p>${ring}${nx}</div>` +
+        act('<button class="pbig alt" data-act="pskiprest">Pause überspringen<small>Sonst geht es automatisch weiter</small></button>', '<button data-act="pplus">+15 s</button>' + undo);
+    }
+    const lbl = ph === 'prep' ? 'Position einnehmen' : ph === 'switch' ? 'Seite wechseln' : 'Halten';
+    const side = perSide(e) ? `Seite ${pl.side + 1} von 2 · ` : '';
+    return top + `<div class="pstage ${ph}" aria-live="polite"><p class="pk">${lbl}</p>${ring}<p class="pnext"><b>${e.name}</b>${side}Satz ${Math.min(s + 1, n)} von ${n}</p></div>` +
+      act('<button class="pbig alt" data-act="pabort">Abbrechen<small>Zurück zum Start dieses Satzes</small></button>', undo);
+  }
+  const info = `<details class="how"><summary>Ausführung und Material</summary><div class="stack" style="gap:10px"><div class="chips">${e.gear.map(g => `<span class="chip">${g}</span>`).join('')}</div><ol class="cues">${e.cues.map(c => `<li>${c}</li>`).join('')}</ol><a class="vid" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.q)}" target="_blank" rel="noopener">Video zur Ausführung suchen</a></div></details>`;
+  const headc = `<div class="stack" style="gap:6px"><h2 class="ptitle">${e.name}</h2></div><div class="figbox">${figure(e.fig, e.name)}</div>`;
+  const nav = `<button data-act="pprev"${kidx === 0 ? ' disabled' : ''}>‹ Übung zurück</button>`;
+  if (s >= n) {
+    const fo = firstOpen(kidx + 1);
+    return top + headc + '<p class="pdone">Diese Übung ist erledigt.</p>' + info +
+      act(fo < 0 ? '<button class="pbig" data-act="kfin">Einheit abschließen</button>' : `<button class="pbig" data-act="pjump" data-i="${fo}">Weiter<small>${ex[fo].name}</small></button>`, nav + undo);
+  }
+  const timed = isTimed(e);
+  const facts = `<div class="pfacts"><div class="hot"><span>Satz</span><b>${s + 1} von ${n}</b></div><div><span>Ziel</span><b class="${target(e).length > 9 ? 'sm' : ''}">${target(e)}</b></div><div><span>Pause danach</span><b>${e.pause} s</b></div></div>`;
+  const big = timed ? `<button class="pbig" data-act="phold">Start: ${e.hold} s halten<small>5 s Vorlauf, dann zählt die App allein${perSide(e) ? ', beide Seiten' : ''}</small></button>` :
+    `<button class="pbig" data-act="pdone">Satz ${s + 1} fertig<small>Tippen, die Pause startet von selbst</small></button>`;
+  return top + headc + facts + lastTime(e) + info + act(big, nav + undo + '<button data-act="pskip">Überspringen ›</button>');
 }
 function finHtml() {
   const saved = !!store.get(savedKey());
   const spots = ['keine', 'Hüfte', 'Rücken', 'Nacken', 'Rippen', 'Knie', 'linker Oberschenkel', 'Hände'];
   return `<div class="stagebar"><button class="back" data-act="kback">${icon('left', 22)}Übersicht</button></div>` +
-    `<div class="kh stack" style="gap:6px"><h2>Einheit abschließen</h2><p>${KNAME[kview]}</p></div>` +
+    `<div class="kh stack" style="gap:6px"><h2>Einheit abschließen</h2><p>${KNAME[kview]}${kemerg && kview !== 'm' ? ', Notfall-Version' : ''}</p></div>` +
     `<div class="group pad"><div class="field"><span>Wie fühlst du dich?</span><div class="pills">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<button data-act="kfeel" data-n="${n}" aria-pressed="${n === kfeel}">${n}</button>`).join('')}</div></div>` +
     `<div class="field"><span>Beschwerden</span><div class="two"><select id="painspot" aria-label="Körperstelle">${spots.map(s => `<option${s === kspot ? ' selected' : ''}>${s}</option>`).join('')}</select><select id="painlvl" aria-label="Stärke von 1 bis 10">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option${n === klvl ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` +
-    (kview !== 'm' ? `<label class="swrow">Notfall-Version (2 Sätze, 20 min)<input type="checkbox" class="switch" id="emergency"${kemerg ? ' checked' : ''}></label>` : '') + '</div>' +
+    '</div>' +
     `<button class="btn block" id="save" data-act="ksave"${saved ? ' disabled' : ''}>${saved ? 'Gespeichert' : 'In Notion speichern'}</button><p class="fine" id="savestate">${esc(ksay || (saved ? 'Für diese Einheit heute schon gespeichert.' : ''))}</p>`;
 }
+function syncPlaying() { document.body.classList.toggle('playing', kmode === 'play' && current === 'kraft'); }
 function renderKraft() {
-  const el = $('v-kraft'), tb = $('timerbar');
-  document.body.appendChild(tb); tb.classList.remove('inline');
-  el.innerHTML = kmode === 'ex' ? exHtml() : kmode === 'fin' ? finHtml() : listHtml();
+  const el = $('v-kraft');
+  if (kmode === 'play' && !EX[kview][kidx]) kmode = 'list';
+  el.innerHTML = kmode === 'play' ? playHtml() : kmode === 'fin' ? finHtml() : listHtml();
   el.querySelectorAll('svg.fig').forEach(svg => {
     try {
       const sep = svg.querySelector('.sep'); if (sep) sep.style.display = 'none';
@@ -834,9 +918,81 @@ function renderKraft() {
     } catch (e) {}
   });
   if (setCounts().length && !store.get(startKey())) store.set(startKey(), String(Date.now()));
-  const slot = $('timerslot');
-  if (slot) { slot.appendChild(tb); tb.classList.add('inline'); }
-  syncTimerVisibility();
+  syncPlaying();
+  if (kmode === 'play' && pl.phase !== 'work') paintTick();
+}
+
+/* ---------- Ablaufsteuerung ---------- */
+let actx = null;
+function audioInit() { try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { actx = null; } }
+function tone(freq, dur, at) {
+  if (!voiceOn || !actx) return;
+  try { const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + (at || 0); o.frequency.value = freq; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.start(t); o.stop(t + dur + 0.02); } catch (e) {}
+}
+function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+function speak(t) {
+  if (!voiceOn) return;
+  try { const u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 1.05; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
+}
+const fmt = sec => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+function stopTick() { clearInterval(pl.tick); pl.tick = null; }
+function paintTick() {
+  const left = Math.max(0, (pl.end - Date.now()) / 1000), t = $('pt-time'), r = $('pt-ring');
+  if (t) t.textContent = fmt(left);
+  if (r) r.setAttribute('stroke-dashoffset', (339.3 * (1 - (pl.total ? left / pl.total : 0))).toFixed(1));
+  return left;
+}
+function startPhase(phase, sec) {
+  stopTick(); pl.phase = phase; pl.total = sec; pl.end = Date.now() + sec * 1000; pl.lastBeep = 0;
+  renderKraft(); window.scrollTo({ top: 0 });
+  pl.tick = setInterval(() => {
+    const left = (pl.end - Date.now()) / 1000, c = Math.ceil(left);
+    if (kmode === 'play' && current === 'kraft') paintTick();
+    if (c >= 1 && c <= 3 && c !== pl.lastBeep) { pl.lastBeep = c; tone(660, 0.12); }
+    if (left <= 0) phaseEnd();
+  }, 200);
+}
+function phaseEnd() {
+  stopTick();
+  const ex = EX[kview], ph = pl.phase;
+  if (ph === 'rest') {
+    kidx = pl.next; const e = ex[kidx], s = curSet(e);
+    tone(880, 0.5); buzz([250, 100, 250]);
+    if (pl.same && isTimed(e)) { speak('Satz ' + (s + 1) + '. Position einnehmen.'); pl.side = 0; startPhase('prep', 5); return; }
+    pl.phase = 'work';
+    speak(pl.same ? 'Weiter. Satz ' + (s + 1) + ' von ' + nSets(e) + '.' : 'Weiter mit ' + e.name + '. ' + nSets(e) + (nSets(e) === 1 ? ' Satz.' : ' Sätze.'));
+    renderKraft(); window.scrollTo({ top: 0 });
+  } else if (ph === 'prep' || ph === 'switch') {
+    tone(880, 0.3); buzz(200); speak('Halten.'); startPhase('hold', ex[kidx].hold);
+  } else if (ph === 'hold') {
+    if (perSide(ex[kidx]) && pl.side === 0) { pl.side = 1; tone(880, 0.3); buzz(200); speak('Seite wechseln.'); startPhase('switch', 5); }
+    else completeSet();
+  }
+}
+function completeSet() {
+  const ex = EX[kview], e = ex[kidx], s = curSet(e);
+  stopTick();
+  if (s < nSets(e)) { done[e.id] = done[e.id] || []; done[e.id][s] = true; saveDone(); }
+  if (!store.get(startKey())) store.set(startKey(), String(Date.now()));
+  const same = curSet(e) < nSets(e), ni = same ? kidx : firstOpen(kidx + 1);
+  if (ni < 0) { pl.phase = 'work'; kmode = 'fin'; tone(880, 0.2); tone(1175, 0.5, 0.25); buzz([200, 100, 400]); speak('Geschafft. Alle Sätze erledigt.'); renderKraft(); window.scrollTo({ top: 0 }); return; }
+  pl.next = ni; pl.same = same;
+  tone(520, 0.2); buzz(120);
+  speak('Pause, ' + e.pause + ' Sekunden. ' + (same ? '' : 'Danach ' + ex[ni].name + '.'));
+  startPhase('rest', e.pause);
+}
+function startPlay(i) {
+  audioInit(); stopTick();
+  const fo = (typeof i === 'number') ? i : firstOpen(0);
+  if (fo < 0) { kmode = 'fin'; renderKraft(); return; }
+  kidx = fo; kmode = 'play'; pl.phase = 'work'; renderKraft(); window.scrollTo({ top: 0 });
+}
+function undoSet() {
+  const ex = EX[kview]; stopTick(); pl.phase = 'work';
+  let i = countOf(ex[kidx]) > 0 ? kidx : -1;
+  if (i < 0) for (let k = kidx - 1 + ex.length; k > kidx - 1; k--) { const j = k % ex.length; if (countOf(ex[j]) > 0) { i = j; break; } }
+  if (i >= 0) { const e = ex[i]; done[e.id][curSet(e) - 1] = false; saveDone(); kidx = i; }
+  renderKraft();
 }
 
 async function saveToNotion() {
@@ -848,7 +1004,7 @@ async function saveToNotion() {
   const d = TODAY.split('-'), startTs = +(store.get(startKey()) || 0), mins = startTs ? Math.round((Date.now() - startTs) / 60000) : 0;
   const props = {
     'Titel': art + ' ' + d[2] + '.' + d[1] + '.' + d[0], 'date:Datum:start': TODAY, 'date:Datum:is_datetime': 0, 'Art': art,
-    'Übungen': items.map(([e, c]) => e.name + ': ' + c + ' von ' + e.sets + ' Sätzen').join('\n'),
+    'Übungen': items.map(([e, c]) => e.name + ': ' + c + ' von ' + nSets(e) + ' Sätzen').join('\n'),
     'Gefühl': kfeel, 'Schmerz max': lvl, 'Beschwerden': lvl ? kspot + ' ' + lvl + ' von 10' : 'keine', 'Quelle': 'Trainingskarte'
   };
   if (mins >= 1 && mins <= 150) props['Dauer min'] = mins;
@@ -881,7 +1037,7 @@ function setView(v, push) {
   $('wd').textContent = TITLES[v] || WD[NOW.getDay()];
   document.querySelector('.pbp').hidden = v !== 'heute';
   if (v === 'kraft') renderKraft();
-  syncTimerVisibility(); wakeSync();
+  syncPlaying(); wakeSync();
   document.title = (TITLES[v] ? TITLES[v] + ' · ' : '') + 'Trainings-Cockpit';
   if (push) { try { history.replaceState(null, '', '#' + v); } catch (e) { try { location.hash = v; } catch (e2) {} } }
   window.scrollTo({ top: 0 });
@@ -893,26 +1049,28 @@ document.addEventListener('click', ev => {
   const b = ev.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act;
   if (act === 'reload') loadData();
-  else if (act === 'kraft') { kview = b.dataset.k; kmode = 'list'; store.set('cockpit-kview', kview); setView('kraft', true); }
+  else if (act === 'kraft') { stopTick(); pl.phase = 'work'; kview = b.dataset.k; kmode = 'list'; store.set('cockpit-kview', kview); setView('kraft', true); }
   else if (act === 'ftp') { const v = +$('ftpin').value; if (v >= 100 && v <= 450) { ftp = v; store.set('cockpit-ftp', String(v)); zonesOpen = true; renderHeute(); } }
   else if (act === 'manual') {
     const m = {}; ['rToday', 'rPrev', 'rBase', 'hToday', 'hBase'].forEach(k => { m[k] = +$('m-' + k).value; });
     if (Object.values(m).every(v => v > 0)) { store.set('cockpit-manual-' + TODAY, JSON.stringify(m)); renderHeute(); }
   }
-  else if (act === 'kview') { kview = b.dataset.k; kmode = 'list'; ksay = ''; store.set('cockpit-kview', kview); renderKraft(); }
-  else if (act === 'kopen') { kidx = +b.dataset.i; kmode = 'ex'; renderKraft(); window.scrollTo({ top: 0 }); }
-  else if (act === 'kback') { kmode = 'list'; renderKraft(); window.scrollTo({ top: 0 }); }
-  else if (act === 'kprev') { if (kidx > 0) { kidx--; renderKraft(); window.scrollTo({ top: 0 }); } }
-  else if (act === 'knext') { if (kidx < EX[kview].length - 1) { kidx++; kmode = 'ex'; } else { kmode = 'fin'; } renderKraft(); window.scrollTo({ top: 0 }); }
-  else if (act === 'kfin') { kmode = 'fin'; renderKraft(); window.scrollTo({ top: 0 }); }
+  else if (act === 'kview') { stopTick(); pl.phase = 'work'; kview = b.dataset.k; kmode = 'list'; ksay = ''; store.set('cockpit-kview', kview); renderKraft(); }
+  else if (act === 'pstart') startPlay();
+  else if (act === 'pjump') startPlay(+b.dataset.i);
+  else if (act === 'pclose' || act === 'kback') { stopTick(); pl.phase = 'work'; kmode = 'list'; renderKraft(); window.scrollTo({ top: 0 }); }
+  else if (act === 'pdone') { audioInit(); completeSet(); }
+  else if (act === 'phold') { audioInit(); pl.side = 0; speak('Position einnehmen.'); startPhase('prep', 5); }
+  else if (act === 'pabort') { stopTick(); pl.phase = 'work'; renderKraft(); }
+  else if (act === 'pskiprest') { pl.end = Date.now(); phaseEnd(); }
+  else if (act === 'pplus') { pl.end += 15000; pl.total += 15; paintTick(); }
+  else if (act === 'pundo') undoSet();
+  else if (act === 'pprev') { if (kidx > 0) { stopTick(); pl.phase = 'work'; kidx--; renderKraft(); window.scrollTo({ top: 0 }); } }
+  else if (act === 'pskip') { const n = firstOpen(kidx + 1); stopTick(); pl.phase = 'work'; if (n < 0 || n === kidx) kmode = 'fin'; else kidx = n; renderKraft(); window.scrollTo({ top: 0 }); }
+  else if (act === 'pvoice') { voiceOn = !voiceOn; store.set('cockpit-voice', voiceOn ? '1' : '0'); if (voiceOn) { audioInit(); tone(880, 0.15); } else { try { window.speechSynthesis.cancel(); } catch (e) {} } renderKraft(); }
+  else if (act === 'kfin') { stopTick(); pl.phase = 'work'; kmode = 'fin'; renderKraft(); window.scrollTo({ top: 0 }); }
   else if (act === 'kfeel') { kfeel = +b.dataset.n; renderKraft(); }
-  else if (act === 'kreset') { done = {}; saveDone(); store.del(startKey()); store.del(savedKey()); ksay = ''; renderKraft(); }
-  else if (act === 'kset') {
-    const id = b.dataset.ex, n = +b.dataset.set, e = EX[kview].find(x => x.id === id);
-    done[id] = done[id] || []; done[id][n] = !done[id][n]; saveDone(); renderKraft();
-    if (done[id][n]) startTimer(e.pause, countOf(e) < e.sets ? 'Pause' : 'Übung fertig');
-  }
-  else if (act === 'khold') startTimer(+b.dataset.sec, 'Halten');
+  else if (act === 'kreset') { stopTick(); pl.phase = 'work'; done = {}; saveDone(); store.del(startKey()); store.del(savedKey()); ksay = ''; renderKraft(); }
   else if (act === 'ksave') saveToNotion();
 });
 document.addEventListener('change', ev => {
@@ -920,7 +1078,8 @@ document.addEventListener('change', ev => {
   if (id === 'badtoggle') { if (ev.target.checked) store.set('cockpit-bad-' + TODAY, '1'); else store.del('cockpit-bad-' + TODAY); renderHeute(); }
   else if (id === 'painspot') kspot = ev.target.value;
   else if (id === 'painlvl') klvl = +ev.target.value;
-  else if (id === 'emergency') kemerg = ev.target.checked;
+  else if (id === 'emergency') { kemerg = ev.target.checked; if (kemerg) store.set('cockpit-emerg-' + TODAY, '1'); else store.del('cockpit-emerg-' + TODAY); renderKraft(); }
+  else if (id === 'voice') { voiceOn = ev.target.checked; store.set('cockpit-voice', voiceOn ? '1' : '0'); if (voiceOn) { audioInit(); tone(880, 0.15); } }
 });
 document.addEventListener('toggle', ev => { if (ev.target && ev.target.id === 'zones') zonesOpen = ev.target.open; }, true);
 
@@ -930,47 +1089,6 @@ $('pbpdays').textContent = nf(Math.max(0, daysUntil(PBP_START)));
 $('tab-heute').querySelector('.pill').innerHTML = icon('gauge', 24);
 $('tab-kraft').querySelector('.pill').innerHTML = icon('dumbbell', 24);
 $('tab-woche').querySelector('.pill').innerHTML = icon('chart', 24);
-/* ---------- Timer ---------- */
-const bar = $('timerbar'), tTime = $('tb-time'), tLabel = $('tb-label'), tStop = $('tb-stop'), tPlus = $('tb-plus');
-let end = 0, tick = null, actx = null, timerOn = false;
-function syncTimerVisibility() { bar.hidden = !(timerOn && current === 'kraft'); document.body.classList.toggle('timer-on', !bar.hidden && !bar.classList.contains('inline')); }
-const fmt = sec => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
-function beep() {
-  try {
-    if (!actx) return;
-    [0, 0.25, 0.5].forEach(t => {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.frequency.value = 880; o.connect(g); g.connect(actx.destination);
-      g.gain.setValueAtTime(0.25, actx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + t + 0.2);
-      o.start(actx.currentTime + t); o.stop(actx.currentTime + t + 0.22);
-    });
-  } catch (e) {}
-  try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
-}
-function startTimer(sec, label) {
-  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { actx = null; }
-  end = Date.now() + sec * 1000; timerOn = true; syncTimerVisibility();
-  tLabel.textContent = label;
-  bar.classList.remove('ring'); bar.classList.add('run');
-  tStop.hidden = false; tPlus.hidden = false;
-  clearInterval(tick);
-  const upd = () => {
-    const left = (end - Date.now()) / 1000;
-    tTime.textContent = fmt(left);
-    if (left <= 0) {
-      clearInterval(tick); tick = null;
-      bar.classList.remove('run'); bar.classList.add('ring');
-      tLabel.textContent = 'Weiter';
-      tPlus.hidden = true; tStop.hidden = true;
-      beep();
-      setTimeout(() => { if (!tick) { timerOn = false; syncTimerVisibility(); } }, 6000);
-    }
-  };
-  upd(); tick = setInterval(upd, 250);
-}
-tStop.addEventListener('click', () => { clearInterval(tick); tick = null; bar.classList.remove('run', 'ring'); tTime.textContent = '0:00'; tStop.hidden = true; tPlus.hidden = true; timerOn = false; syncTimerVisibility(); });
-tPlus.addEventListener('click', () => { end += 15000; });
-
 /* ---------- Bildschirm anlassen im Kraft-Tab ---------- */
 let wlock = null;
 async function wakeSync() {
