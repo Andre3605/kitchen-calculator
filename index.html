@@ -265,7 +265,7 @@ body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bo
 .pfacts b.sm { font-size: 16px; }
 .pstage { border-radius: 24px; padding: 22px 16px; display: grid; justify-items: center; gap: 12px; text-align: center; background: var(--ink); color: var(--bg); }
 .pstage.hold { background: var(--good); color: #fff; }
-.pstage.prep, .pstage.switch { background: var(--timer); color: #1c1503; }
+.pstage.prep, .pstage.sidechg { background: var(--timer); color: #1c1503; }
 .pstage .pk { color: inherit; opacity: .85; font-size: 16px; }
 .pring { position: relative; width: min(64vw, 250px); aspect-ratio: 1; display: grid; place-items: center; }
 .pring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -285,6 +285,24 @@ body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bo
 .psub button { border: 0; background: transparent; color: var(--muted); font: 700 14px var(--font-body); min-height: 44px; border-radius: 12px; cursor: pointer; }
 .psub button:disabled { opacity: .35; }
 .pdone { background: color-mix(in srgb, var(--good) 14%, var(--surface)); border-radius: 14px; padding: 14px; font-weight: 700; color: var(--good); text-align: center; }
+.pstage.reps { background: var(--accent); color: var(--accent-ink); }
+.pstage.paused { opacity: .75; }
+.pof { font: 700 20px var(--font-display); margin-top: -4px; }
+.pof small { display: block; font: 400 14px var(--font-body); opacity: .9; margin-top: 2px; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; font-size: 13px; }
+.pstage .flow { justify-content: center; }
+.fl { padding: 5px 10px; border-radius: 999px; background: var(--surface2); color: var(--muted); font-weight: 700; white-space: nowrap; }
+.fl.on { background: var(--ink); color: var(--bg); }
+.fl.past { opacity: .5; }
+.fa { color: var(--muted); font-weight: 700; }
+.pstage .fl { background: color-mix(in srgb, currentColor 14%, transparent); color: inherit; }
+.pstage .fl.on { background: color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 0 0 0 2px currentColor; }
+.pstage .fa { color: inherit; opacity: .7; }
+.task { background: var(--surface); border: 2px solid var(--accent); border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; }
+.tbig { font: 700 26px var(--font-display); line-height: 1.15; letter-spacing: -0.3px; }
+.tsteps { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 15px; }
+.tempo { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; font-size: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tempo button { border: 0; background: var(--surface2); color: var(--ink); min-width: 48px; min-height: 44px; border-radius: 12px; font: 700 20px var(--font-display); cursor: pointer; }
 /* Neu: Fortschritt, Vorschau, Verlauf */
 .prog { display: grid; gap: 10px; }
 .prog-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -817,16 +835,36 @@ let voiceOn = store.get('cockpit-voice') !== '0';
 const nSets = e => (kemerg && kview !== 'm') ? Math.min(2, e.sets) : e.sets;
 const countOf = e => (done[e.id] || []).slice(0, nSets(e)).filter(Boolean).length;
 const curSet = e => { const d = done[e.id] || []; for (let i = 0; i < nSets(e); i++) if (!d[i]) return i; return nSets(e); };
-const isTimed = e => !!e.hold && e.hold >= 15;
-const perSide = e => /je Seite/.test(e.dose);
-function target(e) {
-  let t = e.sets > 1 ? e.dose.replace(/^\d+ x /, '') : e.dose;
-  if (/^\d+( bis \d+)?$/.test(t)) t += ' Wdh.';
-  else t = t.replace(/^(\d+) je Seite$/, '$1 Wdh. je Seite');
-  return t;
+/* Vorgabe je Übung: lo/hi Wiederholungen, t Sekunden je Wiederholung, hold Haltezeit, side erst eine dann andere Seite, alt Seiten im Wechsel */
+const SPEC = {
+  bridge: { lo: 12, hi: 15, t: 4 }, row: { hi: 10, t: 3, side: 1 }, pullapart: { hi: 15, t: 3 }, deadbug: { hi: 8, t: 5, alt: 1 }, sideplank: { hold: 25, side: 1 },
+  lunge: { hi: 8, t: 4, side: 1 }, birddog: { hi: 8, t: 5, alt: 1 }, rdl: { hi: 10, t: 4 }, pushup: { lo: 8, hi: 12, t: 3 },
+  hipflexor: { hold: 40, side: 1 }, chest: { hold: 30, side: 1 }, tspine: { hi: 8, t: 5, side: 1 }, catcow: { hi: 10, t: 5 }, chintuck: { hi: 10, t: 7, note: 'je 5 s halten' }, glute: { hold: 40, side: 1 }
+};
+let coachOn = store.get('cockpit-coach') !== '0';
+const isTimed = e => !!SPEC[e.id].hold;
+const perSide = e => !!SPEC[e.id].side;
+const autoRun = e => coachOn || isTimed(e);
+const tempoOf = e => { const v = +store.get('cockpit-tempo-' + e.id); return v >= 1.5 && v <= 10 ? v : SPEC[e.id].t; };
+function target(e, long) {
+  const sp = SPEC[e.id], w = long ? ' Wiederholungen' : ' Wdh.';
+  if (sp.hold) return sp.hold + (long ? ' Sekunden halten' : ' s halten') + (sp.side ? ' je Seite' : '');
+  return (sp.lo ? sp.lo + ' bis ' + sp.hi : sp.hi) + w + (sp.side ? ' je Seite' : sp.alt ? ' je Seite im Wechsel' : '') + (sp.note ? ', ' + sp.note : '');
+}
+function setSteps(e, again) {
+  const sp = SPEC[e.id], sides = sp.side ? ['Links', 'Rechts'] : [''], st = [{ k: 'prep', sec: again ? 3 : 5, side: sides[0] }];
+  sides.forEach((sd, i) => { if (i) st.push({ k: 'switch', sec: 10, side: sd }); st.push(sp.hold ? { k: 'hold', sec: sp.hold, side: sd } : { k: 'reps', n: sp.alt ? sp.hi * 2 : sp.hi, lo: sp.lo, side: sd }); });
+  return st;
+}
+function flowHtml(e, cur, steps) {
+  const st = steps || setSteps(e);
+  const lab = x => x.k === 'prep' ? 'Bereit ' + x.sec + ' s' : x.k === 'switch' ? 'Wechsel ' + x.sec + ' s' : x.k === 'hold' ? x.sec + ' s halten' + (x.side ? ' ' + x.side.toLowerCase() : '') : x.n + (x.side ? ' × ' + x.side.toLowerCase() : ' Wdh.');
+  const items = st.map((x, i) => `<span class="fl${cur === i ? ' on' : cur === 'rest' || (typeof cur === 'number' && i < cur) ? ' past' : ''}">${lab(x)}</span>`);
+  items.push(`<span class="fl${cur === 'rest' ? ' on' : ''}">Pause ${e.pause} s</span>`);
+  return '<div class="flow" role="img" aria-label="Ablauf eines Satzes">' + items.join('<span class="fa">›</span>') + '</div>';
 }
 function firstOpen(from) { const ex = EX[kview]; for (let k = 0; k < ex.length; k++) { const i = ((from || 0) + k) % ex.length; if (countOf(ex[i]) < nSets(ex[i])) return i; } return -1; }
-const pl = { phase: 'work', side: 0, end: 0, total: 0, tick: null, next: 0, same: false, lastBeep: 0 };
+const pl = { phase: 'work', end: 0, total: 0, tick: null, next: 0, same: false, lastBeep: 0, steps: [], si: 0, rep: 0, repStart: 0, repEnd: 0, tempo: 3, paused: false, pausedAt: 0, warned: false };
 const setCounts = () => EX[kview].map(e => [e, countOf(e)]).filter(x => x[1] > 0);
 function say(t) { ksay = t; const el = $('savestate'); if (el) el.textContent = t; }
 
@@ -841,8 +879,8 @@ function listHtml() {
   if (fo < 0) cta = '<button class="btn block xl" data-act="kfin">Einheit abschließen<small>Alle Sätze erledigt</small></button>';
   else if (dn === 0) cta = '<button class="btn block xl" data-act="pstart">Training starten<small>Die App führt dich Satz für Satz durch</small></button>';
   else cta = `<button class="btn block xl" data-act="pstart">Weitermachen<small>Übung ${fo + 1}, Satz ${curSet(ex[fo]) + 1}: ${ex[fo].name}</small></button>`;
-  const howto = dn === 0 ? '<div class="group pad"><h3 style="font-size:18px">So läuft es</h3><ol class="howto"><li><span><b>Satz machen.</b> Das Handy liegt daneben, der Bildschirm bleibt an.</span></li><li><span><b>Einmal tippen:</b> „Satz fertig“. Der Knopf ist groß genug für den Ellbogen.</span></li><li><span><b>Pause läuft von selbst.</b> Ton und Ansage sagen, wann und womit es weitergeht.</span></li></ol><p class="fine">Halteübungen zählt die App komplett allein, inklusive Seitenwechsel.</p></div>' : '';
-  const opts = '<div class="group pad" style="gap:4px">' + `<label class="swrow">Ansage und Töne<input type="checkbox" class="switch" id="voice"${voiceOn ? ' checked' : ''}></label>` + (kview !== 'm' ? `<label class="swrow">Notfall-Version (2 Sätze, 20 min)<input type="checkbox" class="switch" id="emergency"${kemerg ? ' checked' : ''}></label>` : '') + '</div>';
+  const howto = dn === 0 ? '<div class="group pad"><h3 style="font-size:18px">So läuft es, wie mit Trainer</h3><ol class="howto"><li><span><b>Ansage:</b> Vor jeder Übung steht deine Aufgabe, zum Beispiel „3 Sätze × 10 Wiederholungen je Seite“.</span></li><li><span><b>Einmal „Los“ tippen.</b> Die App zählt die Wiederholungen laut mit: 1, 2, 3 …</span></li><li><span><b>Seitenwechsel und Pause</b> sagt sie an und zählt sie herunter. Der nächste Satz startet von selbst.</span></li><li><span><b>Erst bei der nächsten Übung</b> tippst du wieder, wenn dein Material bereitliegt.</span></li></ol></div>' : '';
+  const opts = '<div class="group pad" style="gap:4px">' + `<label class="swrow">Trainer zählt Wiederholungen mit<input type="checkbox" class="switch" id="coach"${coachOn ? ' checked' : ''}></label><label class="swrow">Ansage und Töne<input type="checkbox" class="switch" id="voice"${voiceOn ? ' checked' : ''}></label>` + (kview !== 'm' ? `<label class="swrow">Notfall-Version (2 Sätze, 20 min)<input type="checkbox" class="switch" id="emergency"${kemerg ? ' checked' : ''}></label>` : '') + '</div>';
   const warm = kview === 'm' ? '' : '<details class="group"><summary style="padding:14px 16px;min-height:54px;display:flex;align-items:center;font-weight:700;cursor:pointer">Vorher aufwärmen, 5 min</summary><ul class="warm" style="margin:0;padding:0 16px 16px 36px"><li>Katze-Kuh, 8 x</li><li>Hüftkreisen im Stand, je Richtung 8 x</li><li>Kniebeuge ohne Gewicht auf den Stuhl, 10 x</li><li>Armkreisen, je Richtung 10 x</li><li>Band auseinanderziehen, leicht, 10 x</li></ul></details>';
   const rows = ex.map((e, i) => { const c = countOf(e), n = nSets(e), comp = c >= n; return `<button class="erow${comp ? ' complete' : ''}" data-act="pjump" data-i="${i}"><span class="nb2">${comp ? icon('check', 20) : i + 1}</span><span><span class="tt">${e.name}</span><span class="ss"><b>${n} ${n === 1 ? 'Satz' : 'Sätze'}</b> × ${target(e)}<br>Pause ${e.pause} s zwischen den Sätzen</span></span><span class="cnt">${c}/${n}</span><span class="cv">${icon('right', 18)}</span></button>`; }).join('');
   const sec = dn > 0 ? (fo >= 0 ? '<button class="btn ghost block" data-act="kfin">Vorzeitig abschließen und speichern</button>' : '') + '<button class="btn ghost small" data-act="kreset" style="justify-self:center">Haken von heute löschen</button>' : '';
@@ -858,24 +896,26 @@ function lastTime(e) {
   return `<p class="last">Letztes Mal (${+d[2]}.${+d[1]}.): <b>${l.ex[e.id]} von ${e.sets} Sätzen</b>.${up}</p>`;
 }
 function playHtml() {
-  const ex = EX[kview], e = ex[kidx], n = nSets(e), s = curSet(e), ph = pl.phase;
+  const ex = EX[kview], e = ex[kidx], n = nSets(e), s = curSet(e), ph = pl.phase, sp = SPEC[e.id];
   const segs = '<div class="psegs" aria-hidden="true">' + ex.map((x, i) => { let h = ''; const c = countOf(x); for (let k = 0; k < nSets(x); k++) h += `<i class="${k < c ? 'd' : (i === kidx && k === c && ph !== 'rest' ? 'c' : '')}"></i>`; return `<span class="g">${h}</span>`; }).join('') + '</div>';
   const top = `<div class="ptop"><button class="pico" data-act="pclose" aria-label="Zur Übersicht">${icon('x', 20)}</button><span class="mid">Übung ${kidx + 1} von ${ex.length}</span><button class="pico" data-act="pvoice" aria-pressed="${voiceOn}" aria-label="Ansage ${voiceOn ? 'an' : 'aus'}">${icon('vol', 20)}</button></div>` + segs;
   const act = (big, subs) => `<div class="pact"><div class="pact-in">${big}<div class="psub">${subs}</div></div></div>`;
   const undo = `<button data-act="pundo"${ex.some(x => countOf(x) > 0) ? '' : ' disabled'}>Letzten Satz zurück</button>`;
+  const ring = `<div class="pring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="pt-ring" cx="60" cy="60" r="54" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="ptime" id="pt-time" aria-live="off">0:00</div></div>`;
+  const hold = `<button class="pbig alt" data-act="ppause">${pl.paused ? 'Weiter' : 'Anhalten'}<small>${pl.paused ? 'Angehalten. Tippen, dann läuft es weiter' : 'Sonst läuft alles von selbst'}</small></button>`;
+  if (ph === 'rest') {
+    const ne = ex[pl.next], ns = curSet(ne);
+    const nx = pl.same ? `<p class="pnext"><b>Danach: Satz ${ns + 1} von ${nSets(ne)}</b>${ne.name}, ${target(ne)}${autoRun(ne) ? '<br>Startet von selbst.' : ''}</p>` :
+      `<p class="pnext"><b>Nächste Übung: ${ne.name}</b>${nSets(ne)} ${nSets(ne) === 1 ? 'Satz' : 'Sätze'} × ${target(ne)}</p><p class="pgear">Bereitlegen: ${ne.gear.join(', ')}</p>`;
+    return top + `<div class="pstage rest${pl.paused ? ' paused' : ''}" aria-live="polite"><p class="pk">Pause</p>${ring}${nx}</div>` +
+      act('<button class="pbig alt" data-act="pskiprest">Pause überspringen<small>Sonst geht es automatisch weiter</small></button>', '<button data-act="pplus">+15 s</button><button data-act="ppause">' + (pl.paused ? 'Weiter' : 'Anhalten') + '</button>' + undo);
+  }
   if (ph !== 'work') {
-    const ring = `<div class="pring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="pt-ring" cx="60" cy="60" r="54" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="ptime" id="pt-time" aria-live="off">0:00</div></div>`;
-    if (ph === 'rest') {
-      const ne = ex[pl.next], ns = curSet(ne);
-      const nx = pl.same ? `<p class="pnext"><b>Danach: Satz ${ns + 1} von ${nSets(ne)}</b>${ne.name}, ${target(ne)}</p>` :
-        `<p class="pnext"><b>Nächste Übung: ${ne.name}</b>${nSets(ne)} ${nSets(ne) === 1 ? 'Satz' : 'Sätze'} × ${target(ne)}</p><p class="pgear">Bereitlegen: ${ne.gear.join(', ')}</p>`;
-      return top + `<div class="pstage rest" aria-live="polite"><p class="pk">Pause</p>${ring}${nx}</div>` +
-        act('<button class="pbig alt" data-act="pskiprest">Pause überspringen<small>Sonst geht es automatisch weiter</small></button>', '<button data-act="pplus">+15 s</button>' + undo);
-    }
-    const lbl = ph === 'prep' ? 'Position einnehmen' : ph === 'switch' ? 'Seite wechseln' : 'Halten';
-    const side = perSide(e) ? `Seite ${pl.side + 1} von 2 · ` : '';
-    return top + `<div class="pstage ${ph}" aria-live="polite"><p class="pk">${lbl}</p>${ring}<p class="pnext"><b>${e.name}</b>${side}Satz ${Math.min(s + 1, n)} von ${n}</p></div>` +
-      act('<button class="pbig alt" data-act="pabort">Abbrechen<small>Zurück zum Start dieses Satzes</small></button>', undo);
+    const st = pl.steps[pl.si] || {}, sd = st.side ? st.side + ' · ' : '';
+    const lbl = ph === 'prep' ? 'Bereit machen' : ph === 'switch' ? 'Seite wechseln, jetzt ' + (st.side || '').toLowerCase() : ph === 'hold' ? (st.side ? st.side + ' halten' : 'Halten') : (st.side ? st.side + ': ' : '') + 'Wiederholung';
+    const of = ph === 'reps' ? `<p class="pof">von ${st.n}<small id="pt-of"></small></p>` : '';
+    const subs = ph === 'reps' ? '<button data-act="ptslow">Langsamer</button><button data-act="ptfast">Schneller</button><button data-act="pdone">Satz fertig ›</button>' : '<button data-act="pabort">Satz abbrechen</button>' + undo;
+    return top + `<div class="pstage ${ph === 'switch' ? 'sidechg' : ph}${pl.paused ? ' paused' : ''}" aria-live="off"><p class="pk">${lbl}</p>${ring}${of}<p class="pnext"><b>${e.name}</b>${sd}Satz ${Math.min(s + 1, n)} von ${n}</p>${flowHtml(e, pl.si, pl.steps)}</div>` + act(hold, subs);
   }
   const info = `<details class="how"><summary>Ausführung und Material</summary><div class="stack" style="gap:10px"><div class="chips">${e.gear.map(g => `<span class="chip">${g}</span>`).join('')}</div><ol class="cues">${e.cues.map(c => `<li>${c}</li>`).join('')}</ol><a class="vid" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.q)}" target="_blank" rel="noopener">Video zur Ausführung suchen</a></div></details>`;
   const headc = `<div class="stack" style="gap:6px"><h2 class="ptitle">${e.name}</h2></div><div class="figbox">${figure(e.fig, e.name)}</div>`;
@@ -885,11 +925,16 @@ function playHtml() {
     return top + headc + '<p class="pdone">Diese Übung ist erledigt.</p>' + info +
       act(fo < 0 ? '<button class="pbig" data-act="kfin">Einheit abschließen</button>' : `<button class="pbig" data-act="pjump" data-i="${fo}">Weiter<small>${ex[fo].name}</small></button>`, nav + undo);
   }
-  const timed = isTimed(e);
-  const facts = `<div class="pfacts"><div class="hot"><span>Satz</span><b>${s + 1} von ${n}</b></div><div><span>Ziel</span><b class="${target(e).length > 9 ? 'sm' : ''}">${target(e)}</b></div><div><span>Pause danach</span><b>${e.pause} s</b></div></div>`;
-  const big = timed ? `<button class="pbig" data-act="phold">Start: ${e.hold} s halten<small>5 s Vorlauf, dann zählt die App allein${perSide(e) ? ', beide Seiten' : ''}</small></button>` :
-    `<button class="pbig" data-act="pdone">Satz ${s + 1} fertig<small>Tippen, die Pause startet von selbst</small></button>`;
-  return top + headc + facts + lastTime(e) + info + act(big, nav + undo + '<button data-act="pskip">Überspringen ›</button>');
+  const auto = autoRun(e), tp = tempoOf(e);
+  const how = sp.hold ? `<li>Die App zählt die ${sp.hold} Sekunden herunter${sp.side ? ', erst links, dann rechts' : ''}.</li>` :
+    auto ? `<li>Die App zählt laut mit: 1, 2, 3 … bis ${sp.alt ? sp.hi * 2 + ' (' + sp.hi + ' je Seite im Wechsel)' : sp.hi}${sp.lo ? '. Ab ' + sp.lo + ' ist das Minimum geschafft' : ''}.</li>` + (sp.side ? '<li>Erst links, dann 10 s zum Wechseln, dann rechts.</li>' : '') :
+    '<li>Du zählst selbst und tippst nach dem Satz einmal.</li>';
+  const task = `<div class="task"><p class="pk">Deine Aufgabe</p><p class="tbig">${n} ${n === 1 ? 'Satz' : 'Sätze'} × ${target(e)}</p><ol class="tsteps">${how}<li>Danach ${e.pause} s Pause, die App zählt herunter.</li>${n > 1 && auto ? '<li>Der nächste Satz startet von selbst.</li>' : ''}</ol>` +
+    (auto ? `<p class="pk">So läuft ein Satz</p>${flowHtml(e, -1)}` : '') +
+    (auto && !sp.hold ? `<div class="tempo"><span>Zähltempo: <b>${nf(tp, 1)} s</b> je Wiederholung</span><button data-act="ptslow" aria-label="Langsamer zählen">−</button><button data-act="ptfast" aria-label="Schneller zählen">+</button></div>` : '') + '</div>';
+  const big = auto ? `<button class="pbig" data-act="pgo">Los: Satz ${s + 1} von ${n}<small>5 s Vorlauf, dann läuft der Satz von selbst</small></button>` :
+    `<button class="pbig" data-act="pdone">Satz ${s + 1} von ${n} fertig<small>Tippen, die Pause startet von selbst</small></button>`;
+  return top + headc + task + lastTime(e) + info + act(big, nav + undo + '<button data-act="pskip">Überspringen ›</button>');
 }
 function finHtml() {
   const saved = !!store.get(savedKey());
@@ -935,39 +980,72 @@ function speak(t) {
   try { const u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 1.05; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
 }
 const fmt = sec => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
-function stopTick() { clearInterval(pl.tick); pl.tick = null; }
+function stopTick() { clearInterval(pl.tick); pl.tick = null; pl.paused = false; }
 function paintTick() {
-  const left = Math.max(0, (pl.end - Date.now()) / 1000), t = $('pt-time'), r = $('pt-ring');
-  if (t) t.textContent = fmt(left);
+  const now = pl.paused ? pl.pausedAt : Date.now(), t = $('pt-time'), r = $('pt-ring');
+  if (pl.phase === 'reps') {
+    const st = pl.steps[pl.si] || {}, o = $('pt-of');
+    if (t) t.textContent = pl.rep || '…';
+    if (r) r.setAttribute('stroke-dashoffset', (339.3 * (1 - Math.max(0, Math.min(1, (now - pl.repStart) / (pl.tempo * 1000))))).toFixed(1));
+    if (o) o.textContent = st.lo ? (pl.rep >= st.lo ? 'Minimum geschafft, weiter solange es sauber geht' : 'mindestens ' + st.lo) : '';
+    return 0;
+  }
+  const left = Math.max(0, (pl.end - now) / 1000);
+  if (t) t.textContent = pl.total >= 60 ? fmt(left) : String(Math.ceil(left));
   if (r) r.setAttribute('stroke-dashoffset', (339.3 * (1 - (pl.total ? left / pl.total : 0))).toFixed(1));
   return left;
 }
-function startPhase(phase, sec) {
-  stopTick(); pl.phase = phase; pl.total = sec; pl.end = Date.now() + sec * 1000; pl.lastBeep = 0;
-  renderKraft(); window.scrollTo({ top: 0 });
-  pl.tick = setInterval(() => {
-    const left = (pl.end - Date.now()) / 1000, c = Math.ceil(left);
-    if (kmode === 'play' && current === 'kraft') paintTick();
-    if (c >= 1 && c <= 3 && c !== pl.lastBeep) { pl.lastBeep = c; tone(660, 0.12); }
-    if (left <= 0) phaseEnd();
-  }, 200);
+function loop() {
+  if (pl.paused) return;
+  const now = Date.now(), vis = kmode === 'play' && current === 'kraft';
+  if (pl.phase === 'reps') {
+    const st = pl.steps[pl.si];
+    if (now >= pl.repEnd) {
+      if (pl.rep >= st.n) { tone(880, 0.3); buzz(200); pl.si++; runStep(); return; }
+      pl.rep++; pl.repStart = now; pl.repEnd = now + pl.tempo * 1000;
+      tone(440, 0.05);
+      speak(pl.rep + (pl.rep === st.n ? '. Letzte.' : st.lo && pl.rep === st.lo ? '. Minimum geschafft.' : ''));
+    }
+    if (vis) paintTick();
+    return;
+  }
+  const left = (pl.end - now) / 1000, c = Math.ceil(left);
+  if (vis) paintTick();
+  if (pl.phase === 'rest' && !pl.warned && pl.total >= 30 && c === 10) { pl.warned = true; speak('Noch 10 Sekunden. In Position gehen.'); }
+  if (c >= 1 && c <= 3 && c !== pl.lastBeep) { pl.lastBeep = c; tone(660, 0.12); }
+  if (left <= 0) phaseEnd();
 }
+function startPhase(phase, sec) {
+  stopTick(); pl.phase = phase; pl.total = sec; pl.end = Date.now() + sec * 1000; pl.lastBeep = 0; pl.warned = false;
+  renderKraft(); window.scrollTo({ top: 0 });
+  pl.tick = setInterval(loop, 100);
+}
+function runStep() {
+  const e = EX[kview][kidx], st = pl.steps[pl.si];
+  if (!st) { completeSet(); return; }
+  if (st.k === 'prep') { speak('Satz ' + (curSet(e) + 1) + ' von ' + nSets(e) + '. ' + (st.side ? st.side + '. ' : '') + 'Bereit machen.'); startPhase('prep', st.sec); }
+  else if (st.k === 'switch') { speak('Seite wechseln. Jetzt ' + st.side.toLowerCase() + '.'); startPhase('switch', st.sec); }
+  else if (st.k === 'hold') { speak('Halten.'); startPhase('hold', st.sec); }
+  else {
+    stopTick(); pl.phase = 'reps'; pl.rep = 0; pl.tempo = tempoOf(e); pl.repStart = Date.now(); pl.repEnd = Date.now() + 400;
+    renderKraft(); window.scrollTo({ top: 0 }); pl.tick = setInterval(loop, 100);
+  }
+}
+function startSet(again) {
+  const e = EX[kview][kidx];
+  audioInit(); pl.steps = setSteps(e, again); pl.si = 0; runStep();
+}
+function brief(e) { const n = nSets(e); return e.name + '. ' + n + (n === 1 ? ' Satz. ' : ' Sätze. Pro Satz ') + target(e, true) + '. ' + (autoRun(e) ? 'Tippe auf Los.' : ''); }
 function phaseEnd() {
-  stopTick();
   const ex = EX[kview], ph = pl.phase;
   if (ph === 'rest') {
-    kidx = pl.next; const e = ex[kidx], s = curSet(e);
+    kidx = pl.next; const e = ex[kidx];
     tone(880, 0.5); buzz([250, 100, 250]);
-    if (pl.same && isTimed(e)) { speak('Satz ' + (s + 1) + '. Position einnehmen.'); pl.side = 0; startPhase('prep', 5); return; }
-    pl.phase = 'work';
-    speak(pl.same ? 'Weiter. Satz ' + (s + 1) + ' von ' + nSets(e) + '.' : 'Weiter mit ' + e.name + '. ' + nSets(e) + (nSets(e) === 1 ? ' Satz.' : ' Sätze.'));
+    if (pl.same && autoRun(e)) { startSet(true); return; }
+    stopTick(); pl.phase = 'work';
+    speak(pl.same ? 'Weiter. Satz ' + (curSet(e) + 1) + ' von ' + nSets(e) + '.' : 'Weiter mit ' + brief(e));
     renderKraft(); window.scrollTo({ top: 0 });
-  } else if (ph === 'prep' || ph === 'switch') {
-    tone(880, 0.3); buzz(200); speak('Halten.'); startPhase('hold', ex[kidx].hold);
-  } else if (ph === 'hold') {
-    if (perSide(ex[kidx]) && pl.side === 0) { pl.side = 1; tone(880, 0.3); buzz(200); speak('Seite wechseln.'); startPhase('switch', 5); }
-    else completeSet();
-  }
+  } else { tone(880, 0.3); buzz(200); pl.si++; runStep(); }
 }
 function completeSet() {
   const ex = EX[kview], e = ex[kidx], s = curSet(e);
@@ -978,14 +1056,25 @@ function completeSet() {
   if (ni < 0) { pl.phase = 'work'; kmode = 'fin'; tone(880, 0.2); tone(1175, 0.5, 0.25); buzz([200, 100, 400]); speak('Geschafft. Alle Sätze erledigt.'); renderKraft(); window.scrollTo({ top: 0 }); return; }
   pl.next = ni; pl.same = same;
   tone(520, 0.2); buzz(120);
-  speak('Pause, ' + e.pause + ' Sekunden. ' + (same ? '' : 'Danach ' + ex[ni].name + '.'));
+  speak((same ? 'Satz fertig. ' : 'Übung fertig. ') + 'Pause, ' + e.pause + ' Sekunden.' + (same ? '' : ' Danach ' + ex[ni].name + '.'));
   startPhase('rest', e.pause);
+}
+function togglePause() {
+  if (!pl.tick) return;
+  if (!pl.paused) { pl.paused = true; pl.pausedAt = Date.now(); try { window.speechSynthesis.cancel(); } catch (e) {} }
+  else { const d = Date.now() - pl.pausedAt; pl.end += d; pl.repStart += d; pl.repEnd += d; pl.paused = false; }
+  renderKraft();
+}
+function nudgeTempo(d) {
+  const e = EX[kview][kidx], v = Math.max(1.5, Math.min(10, tempoOf(e) + d));
+  store.set('cockpit-tempo-' + e.id, String(v));
+  if (pl.phase === 'reps') { pl.tempo = v; speak(d > 0 ? 'Langsamer.' : 'Schneller.'); } else renderKraft();
 }
 function startPlay(i) {
   audioInit(); stopTick();
   const fo = (typeof i === 'number') ? i : firstOpen(0);
   if (fo < 0) { kmode = 'fin'; renderKraft(); return; }
-  kidx = fo; kmode = 'play'; pl.phase = 'work'; renderKraft(); window.scrollTo({ top: 0 });
+  kidx = fo; kmode = 'play'; pl.phase = 'work'; speak(brief(EX[kview][kidx])); renderKraft(); window.scrollTo({ top: 0 });
 }
 function undoSet() {
   const ex = EX[kview]; stopTick(); pl.phase = 'work';
@@ -1060,9 +1149,12 @@ document.addEventListener('click', ev => {
   else if (act === 'pjump') startPlay(+b.dataset.i);
   else if (act === 'pclose' || act === 'kback') { stopTick(); pl.phase = 'work'; kmode = 'list'; renderKraft(); window.scrollTo({ top: 0 }); }
   else if (act === 'pdone') { audioInit(); completeSet(); }
-  else if (act === 'phold') { audioInit(); pl.side = 0; speak('Position einnehmen.'); startPhase('prep', 5); }
+  else if (act === 'pgo') startSet(false);
+  else if (act === 'ppause') togglePause();
+  else if (act === 'ptslow') nudgeTempo(0.5);
+  else if (act === 'ptfast') nudgeTempo(-0.5);
   else if (act === 'pabort') { stopTick(); pl.phase = 'work'; renderKraft(); }
-  else if (act === 'pskiprest') { pl.end = Date.now(); phaseEnd(); }
+  else if (act === 'pskiprest') { pl.paused = false; pl.end = Date.now(); phaseEnd(); }
   else if (act === 'pplus') { pl.end += 15000; pl.total += 15; paintTick(); }
   else if (act === 'pundo') undoSet();
   else if (act === 'pprev') { if (kidx > 0) { stopTick(); pl.phase = 'work'; kidx--; renderKraft(); window.scrollTo({ top: 0 }); } }
@@ -1079,6 +1171,7 @@ document.addEventListener('change', ev => {
   else if (id === 'painspot') kspot = ev.target.value;
   else if (id === 'painlvl') klvl = +ev.target.value;
   else if (id === 'emergency') { kemerg = ev.target.checked; if (kemerg) store.set('cockpit-emerg-' + TODAY, '1'); else store.del('cockpit-emerg-' + TODAY); renderKraft(); }
+  else if (id === 'coach') { coachOn = ev.target.checked; store.set('cockpit-coach', coachOn ? '1' : '0'); }
   else if (id === 'voice') { voiceOn = ev.target.checked; store.set('cockpit-voice', voiceOn ? '1' : '0'); if (voiceOn) { audioInit(); tone(880, 0.15); } }
 });
 document.addEventListener('toggle', ev => { if (ev.target && ev.target.id === 'zones') zonesOpen = ev.target.open; }, true);
