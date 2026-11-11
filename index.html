@@ -32,7 +32,7 @@ th{color:var(--mu);font-weight:600}
 .ck input{width:22px;height:22px}
 h3{margin:14px 0 4px;color:var(--ac);font-size:15px}
 small{color:var(--mu)}
-.sep{border-top:1px solid #374151;margin:10px 0}a{color:var(--ac)}
+.mu{color:var(--mu)}.sep{border-top:1px solid #374151;margin:10px 0}a{color:var(--ac)}
 #cand{max-height:50vh;overflow:auto}
 </style>
 </head>
@@ -84,6 +84,7 @@ small{color:var(--mu)}
       <label class="f" style="flex:2">Ort<input id="sname" placeholder="z. B. Tankstelle Aral"></label>
       <label class="f">km<input id="skm" type="number" step="0.1" inputmode="decimal"></label>
       <label class="f">Art<select id="stype"><option value="both">💧🍞 Beides</option><option value="water">💧 Wasser</option><option value="food">🍞 Essen</option></select></label>
+      <label class="f" style="flex:2">Öffnungszeiten (optional, OSM-Format)<input id="shours" placeholder="Mo-Sa 07:00-20:00; Su off"></label>
       <button id="adds">＋</button>
     </div>
     <p><button id="osm">🔎 Entlang der Route suchen (online)</button> <small id="osmst"></small></p>

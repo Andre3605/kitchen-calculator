@@ -49,7 +49,7 @@ function plan(state) {
   pts.sort((a, b) => a.km - b.km);
   return pts.map((p, i) => {
     const t = controlTimes(p.km, state.dist, startMs);
-    const eta = startMs + (p.km / state.speed) * 3600000 + i * state.pause * 60000;
+    const eta = startMs + (p.km / state.speed) * 3600000 + Math.max(0, i - 1) * state.pause * 60000;
     return Object.assign({}, p, t, { eta, buffer: t.close - eta, idx: i });
   });
 }
@@ -113,7 +113,68 @@ function greedyStops(pts, from, dist, range) {
   return { stops, holes };
 }
 
-if (typeof module !== 'undefined') module.exports = { openHours, closeHours, controlTimes, plan, FINAL_LIMIT, hav, buildRoute, nearest, greedyStops };
+// ---------- Öffnungszeiten (OSM opening_hours, Teilmenge) ----------
+const OH_DAYS = { mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6, su: 0 };
+function parseDays(s) {
+  s = s.trim().toLowerCase().replace(/\s+/g, '');
+  if (!s) return [0, 1, 2, 3, 4, 5, 6];
+  const out = new Set();
+  for (const part of s.split(',')) {
+    if (part === 'ph') continue; // Feiertage nicht auswertbar
+    const m = part.match(/^([a-z]{2})(?:-([a-z]{2}))?$/);
+    if (!m || !(m[1] in OH_DAYS) || (m[2] && !(m[2] in OH_DAYS))) return null;
+    let d = OH_DAYS[m[1]]; const e = m[2] ? OH_DAYS[m[2]] : d;
+    for (let i = 0; i < 8; i++) { out.add(d); if (d === e) break; d = (d + 1) % 7; }
+  }
+  return [...out];
+}
+// -> Regeln oder null (leer/nicht auswertbar)
+function parseOH(str) {
+  if (!str || !str.trim()) return null;
+  str = str.trim();
+  if (/^24\s*\/\s*7$/.test(str)) return [{ days: [0, 1, 2, 3, 4, 5, 6], spans: [[0, 1440]] }];
+  const rules = [];
+  for (const raw of str.split(';')) {
+    const r = raw.trim(); if (!r) continue;
+    const m = r.match(/^([A-Za-z,\- ]*?)\s*((?:\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\s*,?\s*)+|off|closed)$/i);
+    if (!m) return null;
+    const days = parseDays(m[1]); if (!days) return null;
+    if (!days.length) continue;
+    if (/^(off|closed)$/i.test(m[2])) { rules.push({ days, spans: [] }); continue; }
+    const spans = m[2].split(',').map(x => x.trim()).filter(Boolean).map(x => {
+      const t = x.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+      return [+t[1] * 60 + +t[2], +t[3] * 60 + +t[4]];
+    });
+    rules.push({ days, spans });
+  }
+  return rules.some(r => r.spans.length) ? rules : null; // nur "off"-Regeln = unklar
+}
+function spansFor(rules, day) { // spätere Regeln überschreiben frühere
+  let sp = [];
+  for (const r of rules) if (r.days.includes(day)) sp = r.spans;
+  return sp;
+}
+// -> { open: bool, closesInMin: Minuten bis Schluss (wenn offen) }
+function isOpenAt(rules, ms) {
+  const d = new Date(ms), day = d.getDay(), min = d.getHours() * 60 + d.getMinutes();
+  for (const [s, e] of spansFor(rules, day)) {
+    if (e > s && min >= s && min < e) return { open: true, closesInMin: e - min };
+    if (e <= s && min >= s) return { open: true, closesInMin: e + 1440 - min }; // über Mitternacht
+  }
+  for (const [s, e] of spansFor(rules, (day + 6) % 7)) if (e <= s && min < e) return { open: true, closesInMin: e - min };
+  return { open: false };
+}
+// state: open | closing (schließt ≤30 min nach Ankunft) | closed | unknown
+function checkOH(hours, ms) {
+  const rules = parseOH(hours);
+  if (!rules) return { state: 'unknown' };
+  const o = isOpenAt(rules, ms);
+  if (o.open) return o.closesInMin <= 30 ? { state: 'closing', closesInMin: o.closesInMin } : { state: 'open' };
+  for (let t = ms + 600000; t < ms + 48 * 3600000; t += 600000) if (isOpenAt(rules, t).open) return { state: 'closed', opensAt: t };
+  return { state: 'closed' };
+}
+
+if (typeof module !== 'undefined') module.exports = { parseOH, isOpenAt, checkOH, openHours, closeHours, controlTimes, plan, FINAL_LIMIT, hav, buildRoute, nearest, greedyStops };
 
 // ---------- UI ----------
 if (typeof document !== 'undefined') (function () {
@@ -224,12 +285,22 @@ if (typeof document !== 'undefined') (function () {
   const TYPE = { water: '💧 Wasser', food: '🍞 Essen', both: '💧🍞 Beides' };
   const ICON = { water: '💧', food: '🍞', both: '💧🍞' };
 
-  function supplyPts() {
-    const ctl = plan(S).filter(r => r.km > 0).map(r => ({ name: r.name, km: r.km, type: 'both', ctl: true }));
-    return S.supplies.map((s, i) => Object.assign({ idx: i }, s)).concat(ctl).sort((a, b) => a.km - b.km);
+  // Geplante Ankunft an km X (Startzeit, Ø-Tempo, Pausen an vorherigen Kontrollen)
+  function etaPlan(km) {
+    const prior = plan(S).filter(r => r.km > 0 && r.km < S.dist && r.km < km).length;
+    return new Date(S.start).getTime() + km / S.speed * 3600000 + prior * S.pause * 60000;
   }
-  const waterPts = () => supplyPts().filter(p => p.type !== 'food');
-  const foodPts = () => supplyPts().filter(p => p.type !== 'water');
+  // Alle Versorgungspunkte inkl. Kontrollen, mit Ankunftszeit und Öffnungsstatus.
+  // etaFn: km -> ms (Standard: Planung); usable: geschlossene Punkte weglassen
+  function supplyPts(etaFn, usable) {
+    etaFn = etaFn || etaPlan;
+    const ctl = plan(S).filter(r => r.km > 0).map(r => ({ name: r.name, km: r.km, type: 'both', ctl: true }));
+    let pts = S.supplies.map((s, i) => Object.assign({ idx: i }, s)).concat(ctl).sort((a, b) => a.km - b.km);
+    pts.forEach(p => { p.eta = etaFn(p.km); p.oh = p.ctl ? { state: 'open' } : checkOH(p.hours, p.eta); });
+    return usable ? pts.filter(p => p.oh.state !== 'closed') : pts;
+  }
+  const waterPts = (f, u) => supplyPts(f, u).filter(p => p.type !== 'food');
+  const foodPts = (f, u) => supplyPts(f, u).filter(p => p.type !== 'water');
   const waterRange = () => S.bottle / S.drink * S.speed; // km mit vollen Flaschen
 
   $('gpx').onchange = async e => {
@@ -247,8 +318,8 @@ if (typeof document !== 'undefined') (function () {
 
   $('adds').onclick = () => {
     const km = +$('skm').value; if (!(km >= 0 && km <= S.dist)) return alert('km zwischen 0 und ' + S.dist);
-    S.supplies.push({ name: $('sname').value.trim() || 'Versorgung', km, type: $('stype').value });
-    $('sname').value = ''; $('skm').value = ''; save(); render();
+    S.supplies.push({ name: $('sname').value.trim() || 'Versorgung', km, type: $('stype').value, hours: $('shours').value.trim() });
+    $('sname').value = ''; $('skm').value = ''; $('shours').value = ''; save(); render();
   };
 
   // OSM/Overpass (nur online): Trinkwasser, Supermärkte, Bäcker, Tankstellen, Cafés entlang der Route
@@ -281,23 +352,33 @@ if (typeof document !== 'undefined') (function () {
     btn.disabled = false;
   };
 
+  function ohCell(s) {
+    const t = fmt(s.eta).slice(3), o = s.oh;
+    if (s.ctl) return t;
+    if (o.state === 'open') return `${t}<br><span class="ok">✅ offen</span>`;
+    if (o.state === 'closing') return `${t}<br><span class="warn">⚠ schließt in ${o.closesInMin} min</span>`;
+    if (o.state === 'closed') return `${t}<br><span class="bad">🔴 zu${o.opensAt ? ', öffnet ' + fmt(o.opensAt) : ''}</span>`;
+    return `${t}<br><span class="mu">❓ ${s.hours ? 'Zeiten nicht lesbar' : 'keine Zeiten'}</span>`;
+  }
   function renderSup() {
     $('routest').textContent = ROUTE ? `Route geladen: ${(ROUTE.cum[ROUTE.cum.length - 1] / 1000).toFixed(1)} km, ${ROUTE.lat.length} Punkte` : 'Keine Route geladen (GPS-km läuft dann als Zähler).';
     $('bottle').value = S.bottle; $('drink').value = S.drink; $('foodMax').value = S.foodMax;
+    const closedPts = supplyPts().filter(p => p.oh.state === 'closed' && !p.ctl);
     const rngW = waterRange() * 0.85, rngF = S.foodMax * 0.85;
-    const wp = waterPts(), fp = foodPts();
+    const wp = waterPts(null, true), fp = foodPts(null, true);
     const gw = greedyStops(wp, 0, S.dist, rngW), gf = greedyStops(fp, 0, S.dist, rngF);
     const rec = new Set(gw.stops.concat(gf.stops).map(s => s.km + '|' + s.name));
     const sup = supplyPts();
-    $('suptab').innerHTML = '<tr><th>km</th><th>Ort</th><th>Art</th><th>Stopp</th><th></th></tr>' + sup.map(s => {
+    $('suptab').innerHTML = '<tr><th>km</th><th>Ort</th><th>Art</th><th>Ankunft / Öffnung</th><th>Stopp</th><th></th></tr>' + sup.map(s => {
       const w = gw.stops.some(x => x.km === s.km && x.name === s.name), f = gf.stops.some(x => x.km === s.km && x.name === s.name);
       const mark = (w ? '💧' : '') + (f ? '🍞' : '');
       const nav = s.lat ? ` <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&travelmode=bicycling">➤</a>` : '';
-      return `<tr><td>${s.km}</td><td>${esc(s.name)}${nav}${s.hours ? '<br><small>' + esc(s.hours) + '</small>' : ''}</td><td>${s.ctl ? 'Kontrolle' : ICON[s.type]}</td><td>${mark ? '⭐ ' + mark : ''}</td><td>${s.ctl ? '' : `<button class="x" data-ds="${s.idx}">✕</button>`}</td></tr>`;
+      return `<tr><td>${s.km}</td><td>${esc(s.name)}${nav}${s.hours ? '<br><small>' + esc(s.hours) + '</small>' : ''}</td><td>${s.ctl ? 'Kontrolle' : ICON[s.type]}</td><td>${ohCell(s)}</td><td>${mark ? '⭐ ' + mark : ''}</td><td>${s.ctl ? '' : `<button class="x" data-ds="${s.idx}">✕</button>`}</td></tr>`;
     }).join('');
     $('suptab').querySelectorAll('[data-ds]').forEach(b => b.onclick = () => { S.supplies.splice(+b.dataset.ds, 1); save(); render(); });
     const hole = (h, what) => `<div class="bad">⚠ ${what}-Lücke km ${h.from.toFixed(0)}–${h.to.toFixed(0)} (${(h.to - h.from).toFixed(0)} km) – Versorgungspunkt ergänzen oder vorher Vorrat mitnehmen!</div>`;
     $('supsum').innerHTML =
+      (closedPts.length ? `<div class="bad">🔴 Bei Ankunft geschlossen (nicht eingeplant): ${closedPts.map(p => 'km ' + p.km + ' ' + esc(p.name) + ' (' + fmt(p.eta).slice(3) + ')').join(', ')}</div>` : '') +
       `<div>Reichweite volle Flaschen: <b>~${waterRange().toFixed(0)} km</b> (${S.bottle} L ÷ ${S.drink} L/h × ${S.speed} km/h), mit 15 % Reserve ${rngW.toFixed(0)} km.</div>` +
       `<div>💧 Empfohlene Wasser-Stopps: <b>${gw.stops.map(s => s.km + ' ' + esc(s.name)).join(' → ') || 'keine nötig'}</b></div>` +
       gw.holes.map(h => hole(h, 'Wasser')).join('') +
@@ -316,7 +397,8 @@ if (typeof document !== 'undefined') (function () {
     const f = $('fillf'); if (f) f.onclick = () => { S.foodFillKm = S.curKm || 0; save(); renderRide(); };
   }
   function supplyHtml() {
-    const cur = S.curKm || 0, sp = supplyPts();
+    const cur = S.curKm || 0;
+    const rideEta = km => Date.now() + Math.max(0, km - cur) / S.speed * 3600000;
     const usedW = Math.max(0, cur - S.fillKm) / S.speed * S.drink, remW = Math.max(0, S.bottle - usedW);
     const rangeW = remW / S.drink * S.speed, rangeF = Math.max(0, S.foodMax - Math.max(0, cur - S.foodFillKm));
     const line = (icon, pts, range, rem) => {
@@ -328,12 +410,13 @@ if (typeof document !== 'undefined') (function () {
       if (g.holes.length && g.holes[0].from === cur) h += `<b>Kein Punkt in Reichweite!</b> Nächster: ${nx ? esc(nx.name) + ' in ' + (nx.km - cur).toFixed(1) + ' km' : 'keiner'} (Rest ${rem}).`;
       else h += `Spätestens auffüllen: <b>${esc(st.name)}</b> in ${(st.km - cur).toFixed(1)} km (km ${st.km}). Rest ${rem}.`;
       if (nx && st && nx !== st) h += `<br><small>Nächster Punkt überhaupt: ${esc(nx.name)} in ${(nx.km - cur).toFixed(1)} km</small>`;
+      const tt = st || nx; if (tt && tt.oh && tt.oh.state === 'closing') h += `<br><b class="warn">⚠ ${esc(tt.name)} schließt kurz nach deiner Ankunft (${tt.oh.closesInMin} min)</b>`;
       const t = st || nx; if (t && t.lat) h += ` <a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}&travelmode=bicycling">➤ Navi</a>`;
       return h + '</div>';
     };
     return `<div class="sep"></div>` +
-      line('💧', waterPts(), rangeW, `~${remW.toFixed(1)} L / ${rangeW.toFixed(0)} km`) +
-      line('🍞', foodPts(), rangeF, `~${rangeF.toFixed(0)} km Vorrat`) +
+      line('💧', waterPts(rideEta, true), rangeW, `~${remW.toFixed(1)} L / ${rangeW.toFixed(0)} km`) +
+      line('🍞', foodPts(rideEta, true), rangeF, `~${rangeF.toFixed(0)} km Vorrat`) +
       `<div class="row" style="margin-top:8px"><button id="fillw">💧 Wasser aufgefüllt</button><button id="fillf">🍞 Essen aufgefüllt</button></div>`;
   }
 
