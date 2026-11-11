@@ -14,7 +14,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-
 header{padding:12px 16px;font-weight:700;font-size:18px;color:var(--ac)}
 section{padding:0 12px 16px}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0b1220;border-top:1px solid #374151}
-nav button{flex:1;padding:14px 4px;background:none;border:0;color:var(--mu);font-size:14px}
+nav button{flex:1;padding:14px 2px;background:none;border:0;color:var(--mu);font-size:13px}
 nav button.on{color:var(--ac);font-weight:700}
 .card{background:var(--card);border-radius:12px;padding:14px;margin:10px 0}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
@@ -32,6 +32,8 @@ th{color:var(--mu);font-weight:600}
 .ck input{width:22px;height:22px}
 h3{margin:14px 0 4px;color:var(--ac);font-size:15px}
 small{color:var(--mu)}
+.sep{border-top:1px solid #374151;margin:10px 0}a{color:var(--ac)}
+#cand{max-height:50vh;overflow:auto}
 </style>
 </head>
 <body>
@@ -66,6 +68,30 @@ small{color:var(--mu)}
   <div id="ride"></div>
 </section>
 
+<section id="t-sup" hidden>
+  <div class="card">
+    <label class="f">GPX-Route laden<input id="gpx" type="file" accept=".gpx,application/gpx+xml,text/xml"></label>
+    <p id="routest"></p><button id="clrroute">Route entfernen</button>
+  </div>
+  <div class="card"><div class="row">
+    <label class="f">Flaschen gesamt (L)<input id="bottle" type="number" step="0.1" inputmode="decimal"></label>
+    <label class="f">Trinken (L/h)<input id="drink" type="number" step="0.1" inputmode="decimal"></label>
+    <label class="f">Essen alle max. (km)<input id="foodMax" type="number" inputmode="numeric"></label>
+  </div></div>
+  <div class="card" id="supsum"></div>
+  <div class="card">
+    <div class="row">
+      <label class="f" style="flex:2">Ort<input id="sname" placeholder="z. B. Tankstelle Aral"></label>
+      <label class="f">km<input id="skm" type="number" step="0.1" inputmode="decimal"></label>
+      <label class="f">Art<select id="stype"><option value="both">💧🍞 Beides</option><option value="water">💧 Wasser</option><option value="food">🍞 Essen</option></select></label>
+      <button id="adds">＋</button>
+    </div>
+    <p><button id="osm">🔎 Entlang der Route suchen (online)</button> <small id="osmst"></small></p>
+  </div>
+  <div class="card"><table id="suptab"></table></div>
+  <div class="card" id="cand" style="display:block"></div>
+</section>
+
 <section id="t-check" hidden>
   <div id="check"></div>
   <div class="row" style="margin-top:12px"><input id="newi" placeholder="Eigener Punkt" style="flex:1"><button id="addi">＋</button></div>
@@ -80,6 +106,7 @@ small{color:var(--mu)}
 <nav>
   <button class="on" data-t="t-plan">Planer</button>
   <button data-t="t-ride">Unterwegs</button>
+  <button data-t="t-sup">Versorgung</button>
   <button data-t="t-check">Packliste</button>
   <button data-t="t-log">Logbuch</button>
 </nav>

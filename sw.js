@@ -1,4 +1,4 @@
-const CACHE = 'brevet-v1';
+const CACHE = 'brevet-v2';
 const FILES = ['./', './index.html', './app.js', './manifest.json', './icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

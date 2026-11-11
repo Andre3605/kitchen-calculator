@@ -60,7 +60,60 @@ const DEFAULT_CHECK = {
   'Verpflegung': ['2 Flaschen gefüllt', 'Riegel / Gels', 'Elektrolyte', 'Sitzcreme'],
 };
 
-if (typeof module !== 'undefined') module.exports = { openHours, closeHours, controlTimes, plan, FINAL_LIMIT };
+// ---------- GPS / Route / Versorgung (testbar) ----------
+const rad = d => d * Math.PI / 180;
+function hav(lat1, lon1, lat2, lon2) {
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+  return 12742000 * Math.asin(Math.sqrt(a));
+}
+// Punkte [[lat,lon],...] -> Route mit Kilometrierung (m), mind. 100 m Punktabstand
+function buildRoute(pts) {
+  const r = { lat: [], lon: [], cum: [] };
+  let d = 0;
+  pts.forEach((p, i) => {
+    if (i === 0) { r.lat.push(p[0]); r.lon.push(p[1]); r.cum.push(0); return; }
+    const L = r.lat.length - 1, seg = hav(r.lat[L], r.lon[L], p[0], p[1]);
+    if (seg >= 100 || i === pts.length - 1) {
+      d += seg; r.lat.push(+p[0].toFixed(5)); r.lon.push(+p[1].toFixed(5)); r.cum.push(Math.round(d));
+    }
+  });
+  return r;
+}
+// nächster Routenpunkt; mit 'from' wird zuerst nur im Fenster gesucht (Schleifen/Rückwege)
+function nearest(r, lat, lon, from, win) {
+  let lo = 0, hi = r.lat.length - 1;
+  if (from != null) { lo = Math.max(0, from - 100); hi = Math.min(hi, from + (win || 600)); }
+  const cl = Math.cos(rad(lat));
+  let best = lo, bd = Infinity;
+  for (let i = lo; i <= hi; i++) {
+    const dx = (r.lon[i] - lon) * cl, dy = r.lat[i] - lat, d2 = dx * dx + dy * dy;
+    if (d2 < bd) { bd = d2; best = i; }
+  }
+  const dm = Math.sqrt(bd) * 111195;
+  if (from != null && dm > 1000) return nearest(r, lat, lon, null);
+  return { i: best, d: dm, km: r.cum[best] / 1000 };
+}
+// Greedy: von 'from' aus immer den am weitesten erreichbaren Punkt innerhalb 'range' km wählen.
+// holes = Abschnitte ohne erreichbaren Punkt.
+function greedyStops(pts, from, dist, range) {
+  range = Math.max(range, 0.1);
+  const stops = [], holes = [];
+  let pos = from, guard = 0;
+  while (dist - pos > range && guard++ < 200) {
+    let cand = null;
+    for (const p of pts) if (p.km > pos + 0.01 && p.km <= pos + range) cand = p;
+    if (!cand) {
+      const nx = pts.find(p => p.km > pos + range);
+      holes.push({ from: pos, to: nx ? nx.km : dist });
+      if (!nx) break;
+      cand = nx;
+    }
+    stops.push(cand); pos = cand.km;
+  }
+  return { stops, holes };
+}
+
+if (typeof module !== 'undefined') module.exports = { openHours, closeHours, controlTimes, plan, FINAL_LIMIT, hav, buildRoute, nearest, greedyStops };
 
 // ---------- UI ----------
 if (typeof document !== 'undefined') (function () {
@@ -78,7 +131,7 @@ if (typeof document !== 'undefined') (function () {
 
   const defaults = () => {
     const d = new Date(); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); d.setHours(6, 0, 0, 0);
-    return { dist: 200, start: toLocalInput(d.getTime()), speed: 22, pause: 15, controls: [], curKm: 0, done: {}, log: [], check: {}, custom: [] };
+    return { dist: 200, start: toLocalInput(d.getTime()), speed: 22, pause: 15, controls: [], curKm: 0, odo: 0, bottle: 1.5, drink: 0.5, foodMax: 60, supplies: [], cand: [], fillKm: 0, foodFillKm: 0, done: {}, log: [], check: {}, custom: [] };
   };
   let S = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}'));
   const save = () => localStorage.setItem(KEY, JSON.stringify(S));
@@ -122,7 +175,7 @@ if (typeof document !== 'undefined') (function () {
     const next = rows.find(r => !S.done[r.km + '|' + r.name]);
     const now = Date.now(), start = new Date(S.start).getTime();
     $('curkm').value = S.curKm || '';
-    if (!next) { $('ride').innerHTML = '<div class="card ok big">🏁 Alle Kontrollen abgestempelt – Brevet geschafft!</div>'; return; }
+    if (!next) { $('ride').innerHTML = gpsHtml() + '<div class="card ok big">🏁 Alle Kontrollen abgestempelt – Brevet geschafft!</div>'; wireRide(); return; }
     const left = next.close - now, need = next.km - S.curKm;
     let h = `<div class="card"><div class="lbl">Nächste Kontrolle</div><div class="big">${esc(next.name)} · km ${next.km}</div>
       <div>Öffnet ${fmt(next.open)} · Schließt <b>${fmt(next.close)}</b></div>`;
@@ -133,8 +186,10 @@ if (typeof document !== 'undefined') (function () {
       const v = need / (left / 3600000);
       h += `<div>Noch <b>${need.toFixed(1)} km</b> → nötiger Ø: <b class="${v > S.speed * 1.3 ? 'bad' : v > S.speed ? 'warn' : 'ok'}">${v.toFixed(1)} km/h</b> (geplant ${S.speed})</div>`;
     }
+    h += supplyHtml();
     h += `<button id="stamp" class="primary">✔ Kontrolle jetzt abgestempelt</button></div>`;
-    $('ride').innerHTML = h;
+    $('ride').innerHTML = gpsHtml() + h;
+    wireRide();
     $('stamp').onclick = () => {
       const t = prompt('Zeit der Stempelung (HH:MM) – leer = jetzt', '');
       let ts = now;
@@ -164,9 +219,163 @@ if (typeof document !== 'undefined') (function () {
   };
   $('clearl').onclick = () => { if (confirm('Logbuch und Stempel-Status löschen?')) { S.log = []; S.done = {}; save(); render(); } };
 
+  // ---------- Versorgung & GPS ----------
+  let ROUTE = JSON.parse(localStorage.getItem('brevet-route') || 'null');
+  const TYPE = { water: '💧 Wasser', food: '🍞 Essen', both: '💧🍞 Beides' };
+  const ICON = { water: '💧', food: '🍞', both: '💧🍞' };
+
+  function supplyPts() {
+    const ctl = plan(S).filter(r => r.km > 0).map(r => ({ name: r.name, km: r.km, type: 'both', ctl: true }));
+    return S.supplies.map((s, i) => Object.assign({ idx: i }, s)).concat(ctl).sort((a, b) => a.km - b.km);
+  }
+  const waterPts = () => supplyPts().filter(p => p.type !== 'food');
+  const foodPts = () => supplyPts().filter(p => p.type !== 'water');
+  const waterRange = () => S.bottle / S.drink * S.speed; // km mit vollen Flaschen
+
+  $('gpx').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const x = new DOMParser().parseFromString(await f.text(), 'application/xml');
+    let n = [...x.getElementsByTagName('trkpt')]; if (!n.length) n = [...x.getElementsByTagName('rtept')];
+    const pts = n.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+    if (pts.length < 2) return alert('Keine Trackpunkte in der GPX-Datei gefunden.');
+    ROUTE = buildRoute(pts);
+    try { localStorage.setItem('brevet-route', JSON.stringify(ROUTE)); } catch (_) { alert('Route zu groß zum Speichern – bleibt nur bis zum Neuladen.'); }
+    S.cand = []; save(); render();
+  };
+  $('clrroute').onclick = () => { ROUTE = null; localStorage.removeItem('brevet-route'); S.cand = []; save(); render(); };
+  ['bottle', 'drink', 'foodMax'].forEach(k => $(k).oninput = e => { S[k] = Math.max(0.1, +e.target.value || 0.1); save(); renderSup(); });
+
+  $('adds').onclick = () => {
+    const km = +$('skm').value; if (!(km >= 0 && km <= S.dist)) return alert('km zwischen 0 und ' + S.dist);
+    S.supplies.push({ name: $('sname').value.trim() || 'Versorgung', km, type: $('stype').value });
+    $('sname').value = ''; $('skm').value = ''; save(); render();
+  };
+
+  // OSM/Overpass (nur online): Trinkwasser, Supermärkte, Bäcker, Tankstellen, Cafés entlang der Route
+  $('osm').onclick = async () => {
+    if (!ROUTE) return alert('Erst eine GPX-Route laden.');
+    const btn = $('osm'); btn.disabled = true;
+    try {
+      const pts = []; let nextM = 0;
+      ROUTE.cum.forEach((c, i) => { if (c >= nextM || i === ROUTE.cum.length - 1) { pts.push([ROUTE.lat[i], ROUTE.lon[i]]); nextM = c + 3000; } });
+      const found = new Map();
+      for (let i = 0; i < pts.length - 1; i += 24) {
+        $('osmst').textContent = `Suche… ${Math.min(100, Math.round(i / pts.length * 100))} %`;
+        const co = pts.slice(i, i + 25).map(p => p.join(',')).join(',');
+        const a = `(around:500,${co})`;
+        const q = `[out:json][timeout:40];(node${a}[amenity=drinking_water];node${a}[shop~"^(supermarket|convenience|bakery|kiosk)$"];node${a}[amenity=fuel];node${a}[amenity=cafe];);out body;`;
+        const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        if (!res.ok) throw new Error('Overpass ' + res.status);
+        (await res.json()).elements.forEach(el => found.set(el.id, el));
+      }
+      const have = new Set(S.supplies.map(s => s.osm));
+      S.cand = [...found.values()].filter(el => !have.has(el.id)).map(el => {
+        const t = el.tags || {}, n = nearest(ROUTE, el.lat, el.lon, null);
+        const kind = t.amenity === 'drinking_water' ? 'water' : 'food';
+        const label = t.name || ({ drinking_water: 'Trinkwasser', fuel: 'Tankstelle', cafe: 'Café' }[t.amenity] || { supermarket: 'Supermarkt', convenience: 'Laden', bakery: 'Bäckerei', kiosk: 'Kiosk' }[t.shop] || 'Versorgung');
+        return { osm: el.id, name: label, type: kind, km: Math.round(n.km * 10) / 10, off: Math.round(n.d), lat: el.lat, lon: el.lon, hours: t.opening_hours || '' };
+      }).filter(c => c.off <= 600).sort((a, b) => a.km - b.km);
+      $('osmst').textContent = `${S.cand.length} Vorschläge gefunden.`;
+      save(); renderSup();
+    } catch (err) { $('osmst').textContent = 'Fehler (offline?): ' + err.message; }
+    btn.disabled = false;
+  };
+
+  function renderSup() {
+    $('routest').textContent = ROUTE ? `Route geladen: ${(ROUTE.cum[ROUTE.cum.length - 1] / 1000).toFixed(1)} km, ${ROUTE.lat.length} Punkte` : 'Keine Route geladen (GPS-km läuft dann als Zähler).';
+    $('bottle').value = S.bottle; $('drink').value = S.drink; $('foodMax').value = S.foodMax;
+    const rngW = waterRange() * 0.85, rngF = S.foodMax * 0.85;
+    const wp = waterPts(), fp = foodPts();
+    const gw = greedyStops(wp, 0, S.dist, rngW), gf = greedyStops(fp, 0, S.dist, rngF);
+    const rec = new Set(gw.stops.concat(gf.stops).map(s => s.km + '|' + s.name));
+    const sup = supplyPts();
+    $('suptab').innerHTML = '<tr><th>km</th><th>Ort</th><th>Art</th><th>Stopp</th><th></th></tr>' + sup.map(s => {
+      const w = gw.stops.some(x => x.km === s.km && x.name === s.name), f = gf.stops.some(x => x.km === s.km && x.name === s.name);
+      const mark = (w ? '💧' : '') + (f ? '🍞' : '');
+      const nav = s.lat ? ` <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&travelmode=bicycling">➤</a>` : '';
+      return `<tr><td>${s.km}</td><td>${esc(s.name)}${nav}${s.hours ? '<br><small>' + esc(s.hours) + '</small>' : ''}</td><td>${s.ctl ? 'Kontrolle' : ICON[s.type]}</td><td>${mark ? '⭐ ' + mark : ''}</td><td>${s.ctl ? '' : `<button class="x" data-ds="${s.idx}">✕</button>`}</td></tr>`;
+    }).join('');
+    $('suptab').querySelectorAll('[data-ds]').forEach(b => b.onclick = () => { S.supplies.splice(+b.dataset.ds, 1); save(); render(); });
+    const hole = (h, what) => `<div class="bad">⚠ ${what}-Lücke km ${h.from.toFixed(0)}–${h.to.toFixed(0)} (${(h.to - h.from).toFixed(0)} km) – Versorgungspunkt ergänzen oder vorher Vorrat mitnehmen!</div>`;
+    $('supsum').innerHTML =
+      `<div>Reichweite volle Flaschen: <b>~${waterRange().toFixed(0)} km</b> (${S.bottle} L ÷ ${S.drink} L/h × ${S.speed} km/h), mit 15 % Reserve ${rngW.toFixed(0)} km.</div>` +
+      `<div>💧 Empfohlene Wasser-Stopps: <b>${gw.stops.map(s => s.km + ' ' + esc(s.name)).join(' → ') || 'keine nötig'}</b></div>` +
+      gw.holes.map(h => hole(h, 'Wasser')).join('') +
+      `<div>🍞 Empfohlene Essens-Stopps (max. ${S.foodMax} km Abstand): <b>${gf.stops.map(s => s.km + ' ' + esc(s.name)).join(' → ') || 'keine nötig'}</b></div>` +
+      gf.holes.map(h => hole(h, 'Essens')).join('');
+    $('cand').innerHTML = S.cand.length ? '<h3>Vorschläge (OSM) – ＋ übernimmt</h3>' + S.cand.map((c, i) =>
+      `<div class="ck">${ICON[c.type]} km ${c.km} · ${esc(c.name)} <small>(${c.off} m abseits${c.hours ? ', ' + esc(c.hours) : ''})</small><button style="margin-left:auto" data-ac="${i}">＋</button></div>`).join('') : '';
+    $('cand').querySelectorAll('[data-ac]').forEach(b => b.onclick = () => {
+      const c = S.cand.splice(+b.dataset.ac, 1)[0]; S.supplies.push(c); save(); renderSup(); renderRide();
+    });
+  }
+
+  function wireRide() {
+    const g = $('gpsbtn'); if (g) g.onclick = toggleGps;
+    const w = $('fillw'); if (w) w.onclick = () => { S.fillKm = S.curKm || 0; save(); renderRide(); };
+    const f = $('fillf'); if (f) f.onclick = () => { S.foodFillKm = S.curKm || 0; save(); renderRide(); };
+  }
+  function supplyHtml() {
+    const cur = S.curKm || 0, sp = supplyPts();
+    const usedW = Math.max(0, cur - S.fillKm) / S.speed * S.drink, remW = Math.max(0, S.bottle - usedW);
+    const rangeW = remW / S.drink * S.speed, rangeF = Math.max(0, S.foodMax - Math.max(0, cur - S.foodFillKm));
+    const line = (icon, pts, range, rem) => {
+      const ahead = pts.filter(p => p.km > cur + 0.05);
+      const g = greedyStops(ahead, cur, S.dist, range * 0.85);
+      if (S.dist - cur <= range * 0.85) return `<div class="ok">${icon} Reicht bis ins Ziel (Rest ${rem}).</div>`;
+      const nx = ahead[0], st = g.stops[0];
+      let h = `<div class="${g.holes.length && g.holes[0].from === cur ? 'bad' : 'warn'}">${icon} `;
+      if (g.holes.length && g.holes[0].from === cur) h += `<b>Kein Punkt in Reichweite!</b> Nächster: ${nx ? esc(nx.name) + ' in ' + (nx.km - cur).toFixed(1) + ' km' : 'keiner'} (Rest ${rem}).`;
+      else h += `Spätestens auffüllen: <b>${esc(st.name)}</b> in ${(st.km - cur).toFixed(1)} km (km ${st.km}). Rest ${rem}.`;
+      if (nx && st && nx !== st) h += `<br><small>Nächster Punkt überhaupt: ${esc(nx.name)} in ${(nx.km - cur).toFixed(1)} km</small>`;
+      const t = st || nx; if (t && t.lat) h += ` <a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}&travelmode=bicycling">➤ Navi</a>`;
+      return h + '</div>';
+    };
+    return `<div class="sep"></div>` +
+      line('💧', waterPts(), rangeW, `~${remW.toFixed(1)} L / ${rangeW.toFixed(0)} km`) +
+      line('🍞', foodPts(), rangeF, `~${rangeF.toFixed(0)} km Vorrat`) +
+      `<div class="row" style="margin-top:8px"><button id="fillw">💧 Wasser aufgefüllt</button><button id="fillf">🍞 Essen aufgefüllt</button></div>`;
+  }
+
+  // ---------- GPS ----------
+  let watchId = null, wl = null, gps = {}, lastPos = null, lastDraw = 0;
+  async function wake() { try { wl = await navigator.wakeLock.request('screen'); } catch (_) {} }
+  document.addEventListener('visibilitychange', () => { if (watchId != null && document.visibilityState === 'visible') wake(); });
+  function toggleGps() {
+    if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; if (wl) wl.release(); gps = {}; lastPos = null; return renderRide(); }
+    if (!navigator.geolocation) return alert('Kein GPS im Browser verfügbar.');
+    watchId = navigator.geolocation.watchPosition(onPos, e => { gps.err = e.message; renderRide(); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+    wake(); renderRide();
+  }
+  function onPos(p) {
+    const c = p.coords;
+    gps = { lat: c.latitude, lon: c.longitude, acc: c.accuracy, spd: c.speed, idx: gps.idx };
+    if (ROUTE) {
+      const n = nearest(ROUTE, gps.lat, gps.lon, gps.idx, 600);
+      gps.idx = n.i; gps.off = n.d; gps.km = n.km;
+      if (n.d < 400 && c.accuracy < 100) S.curKm = Math.round(n.km * 10) / 10;
+    } else if (c.accuracy < 40) {
+      if (lastPos) { const d = hav(lastPos[0], lastPos[1], gps.lat, gps.lon); if (d > 10 && d < 500) { S.odo = (S.odo || 0) + d / 1000; S.curKm = Math.round(S.odo * 10) / 10; } else if (d >= 500) lastPos = null; }
+      if (!lastPos || hav(lastPos[0], lastPos[1], gps.lat, gps.lon) > 10) lastPos = [gps.lat, gps.lon];
+    }
+    save();
+    if (Date.now() - lastDraw > 5000) { lastDraw = Date.now(); renderRide(); }
+  }
+  function gpsHtml() {
+    const on = watchId != null;
+    let h = `<button id="gpsbtn" class="${on ? '' : 'primary'}" style="${on ? '' : 'margin-top:0'}">${on ? '📡 GPS aus' : '📡 GPS starten'}</button>`;
+    if (on) {
+      if (gps.err) h += `<div class="bad">${esc(gps.err)}</div>`;
+      else if (gps.lat == null) h += '<div class="warn">Suche Position…</div>';
+      else h += `<div><small>Genauigkeit ±${Math.round(gps.acc)} m` + (gps.spd != null ? ` · ${(gps.spd * 3.6).toFixed(1)} km/h` : '') +
+        (ROUTE ? ` · ${gps.off < 400 ? 'auf der Route' : '<b class="bad">' + Math.round(gps.off) + ' m abseits der Route</b>'}` : ' · GPS-Zähler (keine Route geladen)') + '</small></div>';
+    }
+    return h;
+  }
+
   function render() {
     $('dist').value = S.dist; $('start').value = S.start; $('speed').value = S.speed; $('pause').value = S.pause;
-    renderPlan(); renderRide(); renderCheck(); renderLog();
+    renderPlan(); renderRide(); renderSup(); renderCheck(); renderLog();
   }
   render();
   setInterval(renderRide, 30000);
