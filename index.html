@@ -245,7 +245,7 @@ details.zones[open] summary .chev { transform: rotate(90deg); }
 .btn.xl small { font-size: 14px; font-weight: 400; opacity: .9; }
 .erow .ss b { color: var(--ink); }
 body.playing .top, body.playing .foot, body.playing .nav { display: none; }
-body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: calc(190px + env(safe-area-inset-bottom)); gap: 14px; }
+body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: calc(240px + env(safe-area-inset-bottom)); gap: 14px; }
 .ptop { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
 .ptop .mid { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pico { border: 0; background: var(--surface2); color: var(--ink); min-width: 48px; height: 48px; border-radius: 24px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; font: 700 14px var(--font-body); cursor: pointer; }
@@ -282,9 +282,19 @@ body.playing .app { padding-top: max(10px, env(safe-area-inset-top)); padding-bo
 .pbig small { font: 400 14px var(--font-body); opacity: .9; }
 .pbig.alt { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); min-height: 76px; font-size: 20px; }
 .psub { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
-.psub button { border: 0; background: transparent; color: var(--muted); font: 700 14px var(--font-body); min-height: 44px; border-radius: 12px; cursor: pointer; }
+.psub button { border: 0; background: transparent; color: var(--muted); font: 700 14px var(--font-body); min-height: 44px; border-radius: 12px; cursor: pointer; padding: 4px 2px; line-height: 1.2; }
 .psub button:disabled { opacity: .35; }
 .pdone { background: color-mix(in srgb, var(--good) 14%, var(--surface)); border-radius: 14px; padding: 14px; font-weight: 700; color: var(--good); text-align: center; }
+.sheet { padding-top: 0; padding-bottom: 0; border-top: 0; background: transparent; }
+.sheet .pact-in { background: var(--accent); color: var(--accent-ink); border-radius: 22px 22px 0 0; padding: 0 12px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 24px rgba(0, 0, 0, .28); transition: transform .15s; }
+.sheet.open .pact-in { background: var(--bg); color: var(--ink); box-shadow: 0 -6px 24px rgba(0, 0, 0, .28), inset 0 0 0 1px var(--line); }
+.grip { border: 0; background: transparent; color: inherit; width: 100%; display: grid; justify-items: center; gap: 2px; padding: 8px 6px 10px; cursor: grab; touch-action: none; font: 700 20px var(--font-display); line-height: 1.2; -webkit-user-select: none; user-select: none; }
+.grip i { width: 44px; height: 5px; border-radius: 3px; background: currentColor; opacity: .55; display: block; margin-bottom: 4px; }
+.grip small { font: 400 13px var(--font-body); opacity: .9; }
+.sheet .sheet-body { display: none; gap: 8px; }
+.sheet.open .sheet-body { display: grid; }
+.sheet.open .grip { font: 700 14px var(--font-body); color: var(--muted); padding-bottom: 6px; }
+.sheet.open .grip .gl { display: none; }
 .pstage.reps { background: var(--accent); color: var(--accent-ink); }
 .pstage.paused { opacity: .75; }
 .pof { font: 700 20px var(--font-display); margin-top: -4px; }
@@ -895,11 +905,14 @@ function lastTime(e) {
   const up = p && full(l) && full(p) ? ' Zweimal alle Sätze geschafft: heute steigern (siehe Regeln).' : '';
   return `<p class="last">Letztes Mal (${+d[2]}.${+d[1]}.): <b>${l.ex[e.id]} von ${e.sets} Sätzen</b>.${up}</p>`;
 }
+let sheetOpen = false, sheetKey = '';
 function playHtml() {
   const ex = EX[kview], e = ex[kidx], n = nSets(e), s = curSet(e), ph = pl.phase, sp = SPEC[e.id];
   const segs = '<div class="psegs" aria-hidden="true">' + ex.map((x, i) => { let h = ''; const c = countOf(x); for (let k = 0; k < nSets(x); k++) h += `<i class="${k < c ? 'd' : (i === kidx && k === c && ph !== 'rest' ? 'c' : '')}"></i>`; return `<span class="g">${h}</span>`; }).join('') + '</div>';
   const top = `<div class="ptop"><button class="pico" data-act="pclose" aria-label="Zur Übersicht">${icon('x', 20)}</button><span class="mid">Übung ${kidx + 1} von ${ex.length}</span><button class="pico" data-act="pvoice" aria-pressed="${voiceOn}" aria-label="Ansage ${voiceOn ? 'an' : 'aus'}">${icon('vol', 20)}</button></div>` + segs;
   const act = (big, subs) => `<div class="pact"><div class="pact-in">${big}<div class="psub">${subs}</div></div></div>`;
+  const sk = kview + kidx + '-' + s; if (sk !== sheetKey) { sheetKey = sk; sheetOpen = false; }
+  const sheet = (label, big, subs) => `<div class="pact sheet${sheetOpen ? ' open' : ''}" id="sheet"><div class="pact-in"><button class="grip" id="grip" aria-expanded="${sheetOpen}" aria-controls="sheet-body"><i></i><span class="gl">${label}</span><small>${sheetOpen ? 'Nach unten schieben, um den Text zu lesen' : 'Nach oben ziehen zum Auslösen · tippen für mehr'}</small></button><div class="sheet-body" id="sheet-body">${big}<div class="psub">${subs}</div></div></div></div>`;
   const undo = `<button data-act="pundo"${ex.some(x => countOf(x) > 0) ? '' : ' disabled'}>Letzten Satz zurück</button>`;
   const ring = `<div class="pring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="pt-ring" cx="60" cy="60" r="54" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="ptime" id="pt-time" aria-live="off">0:00</div></div>`;
   const hold = `<button class="pbig alt" data-act="ppause">${pl.paused ? 'Weiter' : 'Anhalten'}<small>${pl.paused ? 'Angehalten. Tippen, dann läuft es weiter' : 'Sonst läuft alles von selbst'}</small></button>`;
@@ -923,7 +936,7 @@ function playHtml() {
   if (s >= n) {
     const fo = firstOpen(kidx + 1);
     return top + headc + '<p class="pdone">Diese Übung ist erledigt.</p>' + info +
-      act(fo < 0 ? '<button class="pbig" data-act="kfin">Einheit abschließen</button>' : `<button class="pbig" data-act="pjump" data-i="${fo}">Weiter<small>${ex[fo].name}</small></button>`, nav + undo);
+      sheet(fo < 0 ? 'Einheit abschließen' : 'Weiter: ' + ex[fo].name, fo < 0 ? '<button class="pbig" data-act="kfin">Einheit abschließen</button>' : `<button class="pbig" data-act="pjump" data-i="${fo}">Weiter<small>${ex[fo].name}</small></button>`, nav + undo);
   }
   const auto = autoRun(e), tp = tempoOf(e);
   const how = sp.hold ? `<li>Die App zählt die ${sp.hold} Sekunden herunter${sp.side ? ', erst links, dann rechts' : ''}.</li>` :
@@ -934,7 +947,7 @@ function playHtml() {
     (auto && !sp.hold ? `<div class="tempo"><span>Zähltempo: <b>${nf(tp, 1)} s</b> je Wiederholung</span><button data-act="ptslow" aria-label="Langsamer zählen">−</button><button data-act="ptfast" aria-label="Schneller zählen">+</button></div>` : '') + '</div>';
   const big = auto ? `<button class="pbig" data-act="pgo">Los: Satz ${s + 1} von ${n}<small>5 s Vorlauf, dann läuft der Satz von selbst</small></button>` :
     `<button class="pbig" data-act="pdone">Satz ${s + 1} von ${n} fertig<small>Tippen, die Pause startet von selbst</small></button>`;
-  return top + headc + task + lastTime(e) + info + act(big, nav + undo + '<button data-act="pskip">Überspringen ›</button>');
+  return top + headc + task + lastTime(e) + info + sheet(auto ? `Los: Satz ${s + 1} von ${n}` : `Satz ${s + 1} von ${n} fertig`, big, nav + undo + '<button data-act="pskip">Überspringen ›</button>');
 }
 function finHtml() {
   const saved = !!store.get(savedKey());
@@ -946,7 +959,30 @@ function finHtml() {
     '</div>' +
     `<button class="btn block" id="save" data-act="ksave"${saved ? ' disabled' : ''}>${saved ? 'Gespeichert' : 'In Notion speichern'}</button><p class="fine" id="savestate">${esc(ksay || (saved ? 'Für diese Einheit heute schon gespeichert.' : ''))}</p>`;
 }
-function syncPlaying() { document.body.classList.toggle('playing', kmode === 'play' && current === 'kraft'); }
+function syncPlaying() {
+  const on = kmode === 'play' && current === 'kraft', app = document.querySelector('.app'), pa = document.querySelector('#v-kraft .pact');
+  document.body.classList.toggle('playing', on);
+  /* Unten genau so viel Platz lassen, wie die Leiste hoch ist. Bei geöffneter Leiste zählt die geschlossene Höhe, sie liegt dann bewusst über dem Text. */
+  let h = 0;
+  if (on && pa) { const g = pa.classList.contains('open') && pa.querySelector('.grip'); h = g ? g.offsetHeight + 40 : pa.offsetHeight; }
+  app.style.paddingBottom = on && h ? (h + 24) + 'px' : '';
+}
+window.addEventListener('resize', syncPlaying);
+/* Leiste: hochziehen löst aus, tippen klappt auf, herunterschieben klappt zu */
+(function () {
+  let y0 = null, dy = 0, moved = false;
+  const inner = () => document.querySelector('#sheet .pact-in');
+  document.addEventListener('pointerdown', ev => { const g = ev.target.closest && ev.target.closest('#grip'); if (!g) return; y0 = ev.clientY; dy = 0; moved = false; try { g.setPointerCapture(ev.pointerId); } catch (e) {} });
+  document.addEventListener('pointermove', ev => { if (y0 === null) return; dy = ev.clientY - y0; if (Math.abs(dy) > 8) moved = true; const el = inner(); if (el) el.style.transform = 'translateY(' + Math.max(-70, Math.min(sheetOpen ? 70 : 0, dy)) + 'px)'; });
+  const end = () => {
+    if (y0 === null) return; y0 = null;
+    const el = inner(); if (el) el.style.transform = '';
+    if (dy < -45) { const b = document.querySelector('#sheet .pbig'); sheetOpen = false; if (b) b.click(); }
+    else if (dy > 35 && sheetOpen) { sheetOpen = false; renderKraft(); }
+  };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', () => { dy = 0; end(); });
+  document.addEventListener('click', ev => { const g = ev.target.closest && ev.target.closest('#grip'); if (!g) return; if (moved) { moved = false; return; } sheetOpen = !sheetOpen; renderKraft(); });
+})();
 function renderKraft() {
   const el = $('v-kraft');
   if (kmode === 'play' && !EX[kview][kidx]) kmode = 'list';
