@@ -1,16 +1,25 @@
 # Brevet-Begleiter
 
-Offline-fähige Web-App (PWA) für Brevetfahrten. Keine Installation, kein Build: `index.html` öffnen oder auf einen Webserver legen und auf dem Handy „Zum Startbildschirm hinzufügen“.
+Offline-fähige Web-App (PWA) für Brevetfahrten (200–1000 km). Kein Build, keine Abhängigkeiten.
 
-- **Planer:** Öffnungs-/Schlusszeiten je Kontrolle (ACP/Audax), geplante Ankunft aus Ø-Tempo + Pausen, Puffer
-- **Unterwegs:** nächste Kontrolle, Restzeit bis Schluss, nötiger Ø bis dahin, Stempel-Buchung
-- **Packliste:** abhakbar, eigene Punkte
-- **Logbuch:** Stempelzeiten mit Reserve, CSV-Export
+## Öffnen
+- **Am PC testen:** `index.html` öffnen (GPS und Offline-Betrieb gehen so nicht).
+- **Fürs Handy:** Ordner per https bereitstellen (GitHub Pages: Settings → Pages → Branch wählen, oder Netlify Drop), Adresse am Handy öffnen → „Zum Startbildschirm". Einmal mit Netz öffnen, danach läuft sie offline.
 
-Daten bleiben lokal im Browser (localStorage).
+## Funktionen
+| Tab | Inhalt |
+|---|---|
+| **Planer** | Öffnungs-/Schlusszeiten nach ACP/Audax, geplante Ankunft (Ø + Pausen), Puffer je Kontrolle, engste Stelle, 🌙 Dunkel-Abschnitte (mit GPX) |
+| **Unterwegs** | GPS → km-Stand auf der Route (ohne GPX: GPS-Zähler), Restzeit bis Kontrollschluss, nötiger Ø, vor/hinter Plan, „spätestens auffüllen bei …", Stempeln (auch mit nachgetragener Uhrzeit) |
+| **Versorgung** | GPX-Import (Wegpunkte werden als Vorschläge übernommen), OSM-Suche entlang der Route, Öffnungszeiten gegen Ankunftszeit, minimale Wasser-/Essens-Stopps (⭐) mit 15 % Reserve, Lücken-Warnung |
+| **Packliste** | Abhakbar, eigene Punkte |
+| **Logbuch** | Stempelzeiten mit Reserve, Rückgängig, CSV für Excel, Neue Fahrt, Sicherung speichern/laden (Gerätewechsel) |
 
-## GPS & Versorgung
-- **GPX laden** (Tab Versorgung): GPS-Position wird auf die Route gerechnet → km-Stand automatisch, Hinweis bei Abweichung. Ohne GPX läuft ein GPS-Zähler.
-- **Wasser/Essen:** Flaschengröße, Trinkmenge (L/h) und max. Essensabstand eingeben. Die App markiert die minimal nötigen Stopps (⭐), warnt vor Lücken und zeigt unterwegs „spätestens auffüllen bei …" inkl. Navi-Link.
-- **Online-Suche:** Trinkwasser, Supermärkte, Bäcker, Tankstellen, Cafés entlang der Route (OpenStreetMap/Overpass) – Öffnungszeiten vor Ort prüfen.
-- **Öffnungszeiten:** Pro Ort (aus OSM oder manuell, OSM-Format wie `Mo-Sa 07:00-20:00; Su off` oder `24/7`) wird gegen die geplante bzw. – unterwegs – die hochgerechnete Ankunftszeit geprüft. Geschlossene Orte werden nicht als Stopp eingeplant; „schließt in ≤ 30 min" wird gewarnt. Feiertage (PH), Sonnenstand und Monatsregeln werden nicht ausgewertet (Status „❓").
+Daten bleiben lokal im Browser.
+
+## Öffnungszeiten-Format
+OSM-Syntax, z. B. `Mo-Sa 07:00-20:00; Su off`, `Mo-Fr 07:00-12:00,14:00-18:00`, `24/7`, `22:00-02:00`.
+Nicht ausgewertet (Status ❓): Feiertage `PH`, Monats-/Wochenregeln, `sunrise-sunset`.
+
+## Tests
+`node test.js` – prüft ACP-Zeiten, Pausenrechnung, Öffnungszeiten, Stopp-Planung, GPS-Projektion und Sonnenzeiten.
